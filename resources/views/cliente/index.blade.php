@@ -19,6 +19,7 @@
             border-bottom: 2px solid #2c3e50;
         }
 
+
         .card-body {
             background-color: #f4f6f9;
             padding: 1.5rem;
@@ -177,6 +178,8 @@
             <li class="breadcrumb-item active">Clientes</li>
         </ol>
 
+        <!--ARON PELA PICHI-->
+ 
         @can('crear-cliente')
             <div class="mb-4">
                 <a href="{{ route('clientes.create') }}" class="btn btn-primary">
