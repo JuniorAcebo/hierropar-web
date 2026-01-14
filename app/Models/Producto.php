@@ -20,8 +20,27 @@ class Producto extends Model
         'presentacione_id',
         'precio_compra',
         'precio_venta',
-        'stock' // ← Asegúrate de que esté aquí
+        // 'stock' removed
     ];
+
+    protected $appends = ['stock_total'];
+
+    public function getStockTotalAttribute()
+    {
+        return $this->almacenes->sum('pivot.cantidad');
+    }
+
+    public function almacenes()
+    {
+        return $this->belongsToMany(Almacen::class, 'producto_almacen')
+                    ->withPivot('cantidad')
+                    ->withTimestamps();
+    }
+
+    public function movimientos()
+    {
+        return $this->hasMany(MovimientoStock::class);
+    }
 
     public function compras()
     {
@@ -89,6 +108,8 @@ class Producto extends Model
 
     public function scopeConStock($query)
     {
-        return $query->where('stock', '>', 0);
+        return $query->whereHas('almacenes', function($q) {
+            $q->where('cantidad', '>', 0);
+        });
     }
 }

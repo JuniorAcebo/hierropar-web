@@ -13,14 +13,19 @@ return new class extends Migration
      */
     public function up()
     {
+        // nota personal es para el usuario
+        //alamacen donde se hizo la compra(solo añade stock) de ese almacen osea si se compro en la central se añade stock a la central
         Schema::create('compras', function (Blueprint $table) {
             $table->id();
             $table->dateTime('fecha_hora');
             $table->string('numero_comprobante',255);
             $table->decimal('total',8,2)->unsigned();
-            $table->tinyInteger('estado')->default(1); //HABRA 3 ESTADOS (COMPLEADO, POR RETIRAR, POR PAGAR)
+            // pagado, pendiente, por entregar
+            $table->enum('estado', ['pagado', 'pendiente', 'por entregar'])->default('pendiente'); 
             $table->foreignId('comprobante_id')->nullable()->constrained('comprobantes')->onDelete('set null');
             $table->foreignId('proveedore_id')->nullable()->constrained('proveedores')->onDelete('set null');
+            $table->foreignId('almacen_id')->nullable()->constrained('almacenes')->onDelete('set null');
+            $table->string('nota_personal')->nullable();
             $table->timestamps();
         });
     }

@@ -21,5 +21,10 @@ class Cliente extends Model
         return $query->where('estado', 1); // Ajusta según tu estructura
     }
 
-    protected $fillable = ['persona_id'];
+    protected $fillable = ['persona_id', 'grupo_id'];
+
+    public function grupo()
+    {
+        return $this->belongsTo(GrupoCliente::class, 'grupo_id');
+    }
 }

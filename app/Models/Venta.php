@@ -9,6 +9,13 @@ class Venta extends Model
 {
     use HasFactory;
 
+    const ESTADO_CANCELADO = 0;
+    const ESTADO_POR_PAGAR = 1;
+    const ESTADO_POR_ENTREGAR = 2;
+    const ESTADO_COMPLETADO = 3;
+
+    protected $table = 'ventas';
+
     protected $guarded = ['id'];
 
     public function cliente()
