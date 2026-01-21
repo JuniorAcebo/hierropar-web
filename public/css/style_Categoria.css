@@ -386,20 +386,22 @@
             border-radius: 2px;
         }
 
-        /* Botón verde moderno */
-        .btn-stock {
-            border: 2px solid #28a745; /* borde verde */
-            background-color: #28a745; /* fondo verde */
-            color: white; /* icono blanco */
-            transition: all 0.3s ease; /* animación suave */
-            border-radius: 0.375rem; /* esquinas redondeadas */
-            padding: 0.35rem 0.75rem;
-        }
+/* Desactivar (rojo) */
+.btn-delete {
+    background-color: #e74c3c;
+    color: white;
+}
 
-        /* Hover: ligero efecto de brillo o sombra */
-        .btn-stock:hover {
-            background-color: #218838; /* verde un poco más oscuro */
-            border-color: #218838;
-            transform: translateY(-2px); /* pequeño levantamiento */
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* sombra suave */
-        }
+.btn-delete:hover {
+    background-color: #c0392b;
+}
+
+/* Activar (verde) */
+.btn-restore {
+    background-color: #2ecc71;
+    color: white;
+}
+
+.btn-restore:hover {
+    background-color: #27ae60;
+}

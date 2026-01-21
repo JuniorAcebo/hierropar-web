@@ -108,7 +108,7 @@
                                         @if ($item->estado)
                                             <span class="badge-modern badge-activo"><i class="fas fa-check-circle me-1"></i>Activo</span>
                                         @else
-                                            <span class="badge-modern badge-eliminado"><i class="fas fa-times-circle me-1"></i>Eliminado</span>
+                                            <span class="badge-modern badge-eliminado"><i class="fas fa-times-circle me-1"></i>Inactivo</span>
                                         @endif
                                     </td>
 
@@ -130,18 +130,22 @@
                                             @endcan
 
                                             @can('update-estado')
-                                                <a href="#" class="btn-action btn-delete" title="Eliminar/Restaurar">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
+                                            <form action="{{ route('productos.updateEstado', $item) }}"
+                                                method="POST"
+                                                class="d-inline form-update-estado">
+                                                @csrf
+                                                @method('PATCH')
+
+                                                <button type="button"
+                                                    class="btn-action {{ $item->estado ? 'btn-delete' : 'btn-restore' }} btn-toggle-estado"
+                                                    data-nombre="{{ $item->nombre }}"
+                                                    data-estado="{{ $item->estado ? 'desactivar' : 'activar' }}"
+                                                    title="{{ $item->estado ? 'Desactivar' : 'Activar' }}">
+                                                    <i class="fas {{ $item->estado ? 'fa-trash' : 'fa-check' }}"></i>
+                                                </button>
+                                            </form>
                                             @endcan
 
-                                            @can('update-stock')
-                                                <button class="btn-action btn-success btn-stock" 
-                                                    title="Actualizar Stock"
-                                                    onclick="seleccionarAccionStock({{ $item->id }})">
-                                                    <i class="fas fa-sync-alt text-white"></i>
-                                                </button>
-                                            @endcan
 
                                         </div>
                                     </td>
@@ -183,7 +187,7 @@
                                                             @if ($item->estado)
                                                                 <span class="badge-modern badge-activo"><i class="fas fa-check-circle me-1"></i>Activo</span>
                                                             @else
-                                                                <span class="badge-modern badge-eliminado"><i class="fas fa-times-circle me-1"></i>Eliminado</span>
+                                                                <span class="badge-modern badge-eliminado"><i class="fas fa-times-circle me-1"></i>Inactivo</span>
                                                             @endif
                                                         </p>
                                                     </div>
@@ -211,75 +215,6 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Modal Aumentar Stock -->
-                                <div class="modal fade" id="aumentarStockModal-{{ $item->id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <form action="{{ route('productos.updateStock', $item) }}" method="POST" id="form-stock-{{ $item->id }}">
-                                            @csrf
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Aumentar Stock</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <p>Seleccione los almacenes y la cantidad a sumar:</p>
-
-                                                    @foreach($item->inventarios as $inv)
-                                                        <div class="form-check mb-2">
-                                                            <input class="form-check-input stock-checkbox" type="checkbox" 
-                                                                id="chk-{{ $item->id }}-{{ $inv->almacen_id }}" 
-                                                                data-target="input-{{ $item->id }}-{{ $inv->almacen_id }}">
-                                                            <label class="form-check-label fw-bold" for="chk-{{ $item->id }}-{{ $inv->almacen_id }}">
-                                                                {{ $inv->almacen->nombre }} (Stock actual: {{ $inv->stock }})
-                                                            </label>
-                                                            <input type="number" name="stocks[{{ $inv->almacen_id }}]" 
-                                                                class="form-control mt-1" 
-                                                                id="input-{{ $item->id }}-{{ $inv->almacen_id }}" 
-                                                                placeholder="Cantidad a sumar" 
-                                                                value="0" min="0" step="1" disabled>
-                                                        </div>
-                                                    @endforeach
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="submit" class="btn btn-success">Actualizar Stock</button>
-                                                </div>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-
-                                <!-- Modal Agregar Producto a Almacén Nuevo -->
-                                <div class="modal fade" id="agregarAlmacenModal-{{ $item->id }}" tabindex="-1">
-                                    <div class="modal-dialog">
-                                        <form action="{{ route('productos.addAlmacen', $item) }}" method="POST">
-                                            @csrf
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Agregar a Almacén</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <label class="form-label">Seleccione almacén:</label>
-                                                    <select name="almacen_id" class="form-select" required>
-                                                        @foreach($almacenes->where('estado', true) as $almacen) {{-- Solo activos --}}
-                                                            @if(!$item->inventarios->contains('almacen_id', $almacen->id))
-                                                                <option value="{{ $almacen->id }}">{{ $almacen->nombre }}</option>
-                                                            @endif
-                                                        @endforeach
-                                                    </select>
-
-                                                    <label class="form-label mt-2">Stock inicial:</label>
-                                                    <input type="number" name="stock" class="form-control" min="0" value="0" required>
-                                                </div>
-                                                <div class="modal-footer">
-                                                    <button type="submit" class="btn btn-primary">Agregar Producto</button>
-                                                </div>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-
 
                             @endforeach
                             </tbody>
@@ -359,101 +294,31 @@ function submitForm() {
     fetchProducts();
 }
 
-// ========================
-// PAGINACIÓN
-// ========================
-function attachPaginationListeners() {
-    document.querySelectorAll('.pagination a').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            fetchProducts(this.href);
-        });
-    });
-}
+document.addEventListener('click', function (e) {
+    if (e.target.closest('.btn-toggle-estado')) {
+        const btn = e.target.closest('.btn-toggle-estado');
+        const form = btn.closest('form');
 
-// ========================
-// MODALES DE STOCK
-// ========================
-function seleccionarAccionStock(productId) {
-    Swal.fire({
-        title: 'Seleccione una acción',
-        showCancelButton: true,
-        showDenyButton: true,
-        confirmButtonText: 'Aumentar stock',
-        denyButtonText: 'Agregar a almacén',
-        cancelButtonText: 'Cancelar',
-        icon: 'question'
-    }).then(result => {
-        if (result.isConfirmed) {
-            new bootstrap.Modal(document.getElementById('aumentarStockModal-' + productId)).show();
-        } else if (result.isDenied) {
-            new bootstrap.Modal(document.getElementById('agregarAlmacenModal-' + productId)).show();
-        }
-    });
-}
+        const nombre = btn.dataset.nombre;
+        const accion = btn.dataset.estado;
 
-// Habilitar/deshabilitar input según checkbox
-function attachStockCheckboxListeners() {
-    document.querySelectorAll('.stock-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const input = document.getElementById(this.dataset.target);
-            if (this.checked) {
-                input.disabled = false;
-                if (parseFloat(input.value) === 0) input.value = '';
-                input.focus();
-            } else {
-                input.disabled = true;
-                input.value = 0;
+        Swal.fire({
+            title: '¿Estás seguro?',
+            text: `¿Deseas ${accion} el producto "${nombre}"?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, continuar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
             }
         });
-    });
-}
-
-document.addEventListener('submit', function(e) {
-    if (!e.target.id.startsWith('form-stock-')) return;
-
-    e.preventDefault(); // Prevenir envío
-
-    const form = e.target;
-    const checkboxes = form.querySelectorAll('.stock-checkbox');
-
-    let anyChecked = false;
-    let hasValidQuantity = false;
-
-    checkboxes.forEach(chk => {
-        const input = document.getElementById(chk.dataset.target);
-
-        if (chk.checked) {
-            anyChecked = true;
-            const cantidad = parseFloat(input.value) || 0;
-            if (cantidad > 0) hasValidQuantity = true;
-
-            input.disabled = false; // asegurar que se envíe al servidor
-        } else {
-            input.disabled = true;      // evitar que se envíe
-            input.removeAttribute('name'); // clave: quitar name evita envío
-        }
-    });
-
-    if (!anyChecked) {
-        Swal.fire('Error', 'Debe seleccionar al menos un almacén', 'warning');
-        return;
     }
-
-    if (!hasValidQuantity) {
-        Swal.fire('Error', 'Debe ingresar al menos una cantidad mayor a 0', 'warning');
-        return;
-    }
-
-    form.submit(); // ahora solo se envían los inputs de almacenes seleccionados
 });
 
-
-
-// ========================
-// Inicialización
-// ========================
-document.addEventListener('DOMContentLoaded', attachStockCheckboxListeners);
 </script>
 
 

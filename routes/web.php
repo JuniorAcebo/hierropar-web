@@ -44,12 +44,9 @@ Route::resources([
     Route::patch('/almacenes/{almacen}/estado', [AlmacenController::class, 'updateEstado'])
     ->name('almacenes.updateEstado');
 
-    // Rutas personalizadas para stock
-    Route::post('/productos/{producto}/update-stock', [ProductoController::class, 'updateStock'])
-    ->name('productos.updateStock');
+    Route::patch('productos/{producto}/estado', [ProductoController::class, 'updateEstado'])
+    ->name('productos.updateEstado');
 
-    Route::post('/productos/{producto}/add-almacen', [ProductoController::class, 'addAlmacen'])
-    ->name('productos.addAlmacen');
 
 
 Route::get('/compras/pdf/{id}', [compraController::class, 'generarPdf'])->name('compras.pdf');

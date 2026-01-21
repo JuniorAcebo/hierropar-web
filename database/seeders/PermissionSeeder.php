@@ -65,7 +65,6 @@ class PermissionSeeder extends Seeder
             'ver-producto',
             'crear-producto',
             'editar-producto',
-            'update-stock',
             'update-estado',
 
             //Venta

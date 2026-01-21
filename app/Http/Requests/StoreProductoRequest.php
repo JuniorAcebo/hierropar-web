@@ -24,9 +24,6 @@ class StoreProductoRequest extends FormRequest
             'tipounidad_id' => 'required|integer|exists:tipo_unidades,id',
             'categoria_id' => 'required|integer|exists:categorias,id',
 
-            // STOCK EN TODOS LOS ALMACENES
-            'stock_todos' => 'required|array',
-            'stock_todos.*' => 'nullable|integer|min:0',
         ];
     }
 
@@ -37,7 +34,6 @@ class StoreProductoRequest extends FormRequest
             'marca_id' => 'marca',
             'tipounidad_id' => 'tipo de unidad',
             'categoria_id' => 'categoría',
-            'stock_todos' => 'stock por almacén',
         ];
     }
 
@@ -68,10 +64,6 @@ class StoreProductoRequest extends FormRequest
             'categoria_id.required' => 'Debes seleccionar una categoría.',
             'categoria_id.exists' => 'La categoría seleccionada no es válida.',
 
-            'stock_todos.required' => 'Debes indicar el stock para los almacenes.',
-            'stock_todos.array' => 'El stock debe enviarse como un arreglo.',
-            'stock_todos.*.integer' => 'El stock debe ser un número entero.',
-            'stock_todos.*.min' => 'El stock no puede ser negativo.',
         ];
     }
 }

@@ -20,9 +20,8 @@ class ProductoController extends Controller
     {
         $this->middleware('permission:ver-producto', ['only' => ['index']]);
         $this->middleware('permission:crear-producto', ['only' => ['create', 'store']]);
-        $this->middleware('permission:editar-producto', ['only' => ['edit', 'update']]);
-        $this->middleware('permission:update-stock', ['only' => ['updateStock','addAlmacen']]);
-        $this->middleware('permission:update-estado', ['only' => ['updateState']]);
+        $this->middleware('permission:editar-producto', ['only' => ['edit', 'update']]); 
+        $this->middleware('permission:update-estado', ['only' => ['updateEstado']]);
     }
     
     public function index(Request $request)
@@ -51,13 +50,10 @@ class ProductoController extends Controller
 
         $productos = $query->latest()->paginate($perPage);
 
-         $almacenes = Almacen::all();
-
         return view('producto.index', compact(
             'productos',
             'busqueda',
-            'perPage',
-            'almacenes'
+            'perPage'
         ));
     }
 
@@ -67,9 +63,8 @@ class ProductoController extends Controller
         $marcas = Marca::all();
         $tipounidades = TipoUnidad::all();
         $categorias = Categoria::all();
-        $almacenes = Almacen::all();
 
-        return view('producto.create', compact('marcas', 'tipounidades', 'categorias', 'almacenes'));
+        return view('producto.create', compact('marcas', 'tipounidades', 'categorias'));
     }
 
     public function store(StoreProductoRequest $request)
@@ -77,7 +72,7 @@ class ProductoController extends Controller
         try {
             DB::beginTransaction();
 
-            // Crear producto
+            // 1️⃣ Crear producto
             $producto = Producto::create([
                 'codigo' => $request->codigo,
                 'nombre' => $request->nombre,
@@ -90,80 +85,82 @@ class ProductoController extends Controller
                 'estado' => true,
             ]);
 
-            // =============================
-            // REGISTRO DE STOCK EN TODOS LOS ALMACENES
-            // =============================
-            if ($request->has('stock_todos') && is_array($request->stock_todos)) {
-                foreach ($request->stock_todos as $almacen_id => $stock) {
-                    $producto->inventarios()->create([
-                        'almacen_id' => $almacen_id,
-                        'stock'      => floatval($stock) ?? 0,
-                    ]);
-                }
+            // 2️⃣ Obtener TODOS los almacenes activos
+            $almacenes = Almacen::where('estado', true)->get();
+
+            // 3️⃣ Crear inventario con stock = 0
+            foreach ($almacenes as $almacen) {
+                $producto->inventarios()->create([
+                    'almacen_id' => $almacen->id,
+                    'stock' => 0,
+                ]);
             }
 
             DB::commit();
 
             return redirect()->route('productos.index')
-                ->with('success', 'Producto creado correctamente.');
+                ->with('success', 'Producto creado y agregado a todos los almacenes.');
 
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return redirect()->back()
+            return back()
                 ->withInput()
-                ->with('error', 'Error al crear el producto: ' . $e->getMessage());
+                ->with('error', 'Error al crear producto: ' . $e->getMessage());
         }
     }
 
-
     public function edit(Producto $producto)
     {
+        $marcas = Marca::all();
+        $tipounidades = TipoUnidad::all();
+        $categorias = Categoria::all();
 
+        return view('producto.edit', compact(
+            'producto',
+            'marcas',
+            'tipounidades',
+            'categorias'
+        ));
     }
+
 
 
     public function update(UpdateProductoRequest $request, Producto $producto)
     {
-        
-    }
-    
-    public function destroy(string $id)
-    {
-        
-    }
+        try {
+            $producto->update([
+                'nombre'         => $request->nombre,
+                'descripcion'    => $request->descripcion,
+                'precio_compra'  => $request->precio_compra,
+                'precio_venta'   => $request->precio_venta,
+                'marca_id'       => $request->marca_id,
+                'tipounidad_id'  => $request->tipounidad_id,
+                'categoria_id'   => $request->categoria_id,
+            ]);
 
-    public function updateStock(Request $request, Producto $producto)
-    {
-        $stocks = $request->input('stocks', []);
+            return redirect()->route('productos.index')
+                ->with('success', 'Producto actualizado correctamente.');
 
-        foreach ($stocks as $almacen_id => $cantidad) {
-            $cantidad = floatval($cantidad);
-            if ($cantidad <= 0) continue;
-
-            $inv = $producto->inventarios()->where('almacen_id', $almacen_id)->first();
-            if ($inv) {
-                $inv->increment('stock', $cantidad);
-            }
+        } catch (\Exception $e) {
+            return back()
+                ->withInput()
+                ->with('error', 'Error al actualizar: ' . $e->getMessage());
         }
-
-        return redirect()->route('productos.index')
-            ->with('success', 'Stock actualizado correctamente');
     }
 
-
-
-
-    public function addAlmacen(Request $request, Producto $producto)
+    
+    public function updateEstado(Producto $producto)
     {
-        $producto->inventarios()->create([
-            'almacen_id' => $request->almacen_id,
-            'stock' => $request->stock ?? 0,
-        ]);
+        $producto->estado = !$producto->estado;
+        $producto->save();
 
         return redirect()->route('productos.index')
-            ->with('success', 'Producto agregado al almacén');
+            ->with('success', $producto->estado
+                ? 'Producto activado correctamente.'
+                : 'Producto desactivado correctamente.');
     }
+
 
 
 }
