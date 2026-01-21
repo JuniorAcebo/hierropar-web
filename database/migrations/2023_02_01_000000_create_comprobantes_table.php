@@ -13,11 +13,13 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('compras', function (Blueprint $table) {
+        Schema::create('comprobantes', function (Blueprint $table) {
             $table->id();
-            $table->dateTime('fecha_hora');
-            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('proveedor_id')->nullable()->constrained('proveedores')->onDelete('set null');
+            $table->string('tipo_comprobante', 50);
+            $table->string('serie', 10)->nullable();
+            $table->integer('correlativo_inicial')->nullable();
+            $table->integer('correlativo_final')->nullable();
+            $table->tinyInteger('estado')->default(1);
             $table->timestamps();
         });
     }
@@ -29,6 +31,6 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('compras');
+        Schema::dropIfExists('comprobantes');
     }
 };
