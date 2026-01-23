@@ -28,18 +28,33 @@
 
                 <!-- PRODUCTOS -->
                 @can('ver-producto')
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseProductos" aria-expanded="false">
-                        <div class="sb-nav-link-icon"><i class="fa-solid fa-box-open"></i></div>
+                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseProductos"
+                        aria-expanded="false" aria-controls="collapseLayouts"
+                        style="padding: 0.6rem 0.8rem; margin: 0.1rem 0.3rem;">
+                        <div class="sb-nav-link-icon" style="font-size: 0.9rem;"><i class="fa-brands fa-shopify"></i></div>
                         Productos
-                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-chevron-down"></i></div>
+                        <div class="sb-sidenav-collapse-arrow" style="font-size: 0.8rem;"><i
+                                class="fas fa-chevron-down"></i></div>
+                        <span class="sb-nav-link-badge" style="font-size: 0.6rem; padding: 0.1rem 0.3rem;">Inv</span>
                     </a>
-                    <div class="collapse" id="collapseProductos" data-bs-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
+                    <div class="collapse" id="collapseProductos" aria-labelledby="headingOne"
+                        data-bs-parent="#sidenavAccordion">
+                        <nav class="sb-sidenav-menu-nested nav" style="padding-left: 1rem;">
                             @can('ver-producto')
-                                <a class="nav-link" href="{{ route('productos.index') }}"><i class="fa-solid fa-list-ul me-1"></i>Lista</a>
+                                <a class="nav-link" href="{{ route('productos.index') }}"
+                                    style="padding: 0.5rem 0.8rem; font-size: 0.85rem;">
+                                    <i class="fas fa-list me-1" style="font-size: 0.8rem;"></i>Lista
+                                </a>
                             @endcan
-                            @can('crear-producto')
-                                <a class="nav-link" href="{{ route('productos.create') }}"><i class="fa-solid fa-plus me-1"></i>Crear</a>
+                            @can('ajustar-stock')
+                                <a class="nav-link" href="{{ route('productos.createAjuste') }}"
+                                    style="padding: 0.5rem 0.8rem; font-size: 0.85rem;">
+                                    <i class="fas fa-plus me-1" style="font-size: 0.8rem;"></i>Añadir Ajuste
+                                </a>
+                                <a class="nav-link" href="{{ route('productos.historialAjustes') }}"
+                                    style="padding: 0.5rem 0.8rem; font-size: 0.85rem;">
+                                    <i class="fas fa-history me-1" style="font-size: 0.8rem;"></i>Lista de Ajustes
+                                </a>
                             @endcan
                         </nav>
                     </div>

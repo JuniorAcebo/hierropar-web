@@ -70,19 +70,16 @@
                 <div id="table-container">
                     <div class="datatable-wrapper">
                         <table id="datatablesSimple" class="modern-table">
-                           <thead>
+                            <thead>
                                 <tr>
                                     <th>Código</th>
                                     <th>Nombre</th>
-                                    <th>Descripción</th>
-                                    <th>P. Compra</th>
+                                    <th>Costo</th>
                                     <th>P. Venta</th>
-                                    <th>Marca</th>
-                                    <th>Tipo Unidad</th>
+                                    <th class="text-center">Stock Total</th>
                                     <th>Categoría</th>
-                                    <th>Stock</th>
                                     <th>Estado</th>
-                                    <th>Acciones</th>
+                                    <th class="text-center">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -90,19 +87,17 @@
                                 <tr>
                                     <td><span class="fw-bold" style="color: #2c3e50;">{{ $item->codigo }}</span></td>
                                     <td><span class="fw-bold" style="color: #2c3e50;">{{ $item->nombre }}</span></td>
-                                    <td><span style="color: #2c3e50;">{{ \Illuminate\Support\Str::limit($item->descripcion, 50, '...') }}</span></td>
                                     <td><span class="precio-modern">Bs {{ number_format($item->precio_compra, 2) }}</span></td>
-                                    <td><span class="precio-modern">Bs {{ number_format($item->precio_venta, 2) }}</span></td>
-                                    <td><span style="color: #7f8c8d;">{{ $item->marca->nombre }}</span></td>
-                                    <td><span style="color: #7f8c8d;">{{ $item->tipounidad->nombre }}</span></td>
-                                    <td><span class="categoria-modern">{{ $item->categoria->nombre }}</span></td>
 
+                                    <td><span class="precio-modern">Bs {{ number_format($item->precio_venta, 2) }}</span></td>
                                     <!-- Stock total -->
-                                    <td>
+                                    <td class="text-center">
                                         <span class="fw-bold {{ $item->inventarios->sum('stock') <= 10 ? 'text-danger' : 'text-success' }}">
                                             {{ $item->inventarios->sum('stock') }}
                                         </span>
                                     </td>
+
+                                    <td><span class="categoria-modern">{{ $item->categoria->nombre }}</span></td>
 
                                     <td>
                                         @if ($item->estado)
@@ -112,13 +107,19 @@
                                         @endif
                                     </td>
 
-                                    <td>
+                                    <td class="text-center">
                                         
                                         <!-- Acciones -->
                                         <div class="action-btns-modern">
                                             @can('editar-producto')
                                                 <a href="{{ route('productos.edit', $item) }}" class="btn-action btn-edit" title="Editar">
                                                     <i class="fas fa-edit"></i>
+                                                </a>
+                                            @endcan
+
+                                            @can('ajustar-stock')
+                                                <a href="{{ route('productos.ajusteCantidad', $item) }}" class="btn-action btn-edit" title="Ajustar Stock" style="background-color: #f6ad55; color: white;">
+                                                    <i class="fas fa-boxes"></i>
                                                 </a>
                                             @endcan
 
@@ -129,19 +130,20 @@
                                                 </button>
                                             @endcan
 
-                                            @can('update-estado')
-                                            <form action="{{ route('productos.updateEstado', $item) }}"
+                                            @can('eliminar-producto')
+                                            <form action="{{ route('productos.destroy', $item) }}"
                                                 method="POST"
-                                                class="d-inline form-update-estado">
+                                                class="d-inline form-eliminar-producto">
                                                 @csrf
-                                                @method('PATCH')
+                                                @method('DELETE')
+                                                <input type="hidden" name="accion" id="accion-{{ $item->id }}" value="eliminar">
 
                                                 <button type="button"
-                                                    class="btn-action {{ $item->estado ? 'btn-delete' : 'btn-restore' }} btn-toggle-estado"
+                                                    class="btn-action btn-delete btn-real-delete"
                                                     data-nombre="{{ $item->nombre }}"
-                                                    data-estado="{{ $item->estado ? 'desactivar' : 'activar' }}"
-                                                    title="{{ $item->estado ? 'Desactivar' : 'Activar' }}">
-                                                    <i class="fas {{ $item->estado ? 'fa-trash' : 'fa-check' }}"></i>
+                                                    data-estado="{{ $item->estado }}"
+                                                    title="Opciones de eliminación">
+                                                    <i class="fas fa-trash-alt"></i>
                                                 </button>
                                             </form>
                                             @endcan
@@ -161,49 +163,96 @@
                                             </div>
                                             <div class="modal-body">
 
-                                                <div class="row mb-2">
-                                                    <div class="col-md-6"><p><span class="fw-bold">Código:</span> {{ $item->codigo }}</p></div>
-                                                    <div class="col-md-6"><p><span class="fw-bold">Nombre:</span> {{ $item->nombre }}</p></div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <p><span class="fw-bold">Código:</span> {{ $item->codigo }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <p><span class="fw-bold">Nombre:</span> {{ $item->nombre }}</p>
+                                                    </div>
                                                 </div>
 
-                                                <div class="row mb-2">
-                                                    <div class="col-md-12"><p><span class="fw-bold">Descripción:</span> {{ $item->descripcion }}</p></div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-12">
+                                                        <p><span class="fw-bold">Descripción:</span> {{ $item->descripcion }}</p>
+                                                    </div>
                                                 </div>
 
-                                                <div class="row mb-2">
-                                                    <div class="col-md-6"><p><span class="fw-bold">Precio Compra:</span> Bs {{ number_format($item->precio_compra, 2) }}</p></div>
-                                                    <div class="col-md-6"><p><span class="fw-bold">Precio Venta:</span> Bs {{ number_format($item->precio_venta, 2) }}</p></div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <p><span class="fw-bold">Precio Compra:</span> Bs {{ number_format($item->precio_compra, 2) }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <p><span class="fw-bold">Precio Venta:</span> Bs {{ number_format($item->precio_venta, 2) }}</p>
+                                                    </div>
                                                 </div>
 
-                                                <div class="row mb-2">
-                                                    <div class="col-md-6"><p><span class="fw-bold">Marca:</span> {{ $item->marca->nombre }}</p></div>
-                                                    <div class="col-md-6"><p><span class="fw-bold">Tipo Unidad:</span> {{ $item->tipounidad->nombre }}</p></div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <p><span class="fw-bold">Marca:</span> {{ $item->marca->nombre }}</p>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <p><span class="fw-bold">Tipo Unidad:</span> {{ $item->tipounidad->nombre }}</p>
+                                                    </div>
                                                 </div>
 
-                                                <div class="row mb-2">
-                                                    <div class="col-md-6"><p><span class="fw-bold">Categoría:</span> {{ $item->categoria->nombre }}</p></div>
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <p><span class="fw-bold">Categoría:</span> {{ $item->categoria->nombre }}</p>
+                                                    </div>
                                                     <div class="col-md-6">
                                                         <p><span class="fw-bold">Estado:</span>
                                                             @if ($item->estado)
-                                                                <span class="badge-modern badge-activo"><i class="fas fa-check-circle me-1"></i>Activo</span>
+                                                                <span class="badge-modern badge-activo">
+                                                                    <i class="fas fa-check-circle me-1"></i>Activo
+                                                                </span>
                                                             @else
-                                                                <span class="badge-modern badge-eliminado"><i class="fas fa-times-circle me-1"></i>Inactivo</span>
+                                                                <span class="badge-modern badge-eliminado">
+                                                                    <i class="fas fa-times-circle me-1"></i>Inactivo
+                                                                </span>
                                                             @endif
                                                         </p>
                                                     </div>
                                                 </div>
 
+                                                <!-- STOCK POR ALMACÉN/SUCURSAL -->
                                                 <div class="row mb-2">
                                                     <div class="col-md-12">
-                                                        <p><span class="fw-bold">Stock por sucursal:</span></p>
-                                                        @if($item->inventarios->isNotEmpty())
-                                                            <ul>
-                                                                @foreach($item->inventarios as $inv)
-                                                                    <li>{{ $inv->almacen->nombre }}: {{ $inv->stock }}</li>
+                                                        <h6 class="fw-bold border-bottom pb-2">
+                                                            <i class="fas fa-warehouse me-2 text-primary"></i>
+                                                            Stock por Almacén/Sucursal
+                                                        </h6>
+                                                        
+                                                        @if($item->almacenes && $item->almacenes->count() > 0)
+                                                            <div class="row">
+                                                                @foreach ($item->almacenes as $almacen)
+                                                                    <div class="col-md-6 mb-2">
+                                                                        <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                                                            <span class="fw-bold">{{ $almacen->nombre }}:</span>
+                                                                            <span class="badge bg-primary">{{ $almacen->pivot->stock }} unidades</span>
+                                                                        </div>
+                                                                    </div>
                                                                 @endforeach
-                                                            </ul>
+                                                            </div>
+                                                        @elseif($item->inventarios && $item->inventarios->count() > 0)
+                                                            <!-- Alternativa usando inventarios -->
+                                                            <div class="row">
+                                                                @foreach($item->inventarios as $inv)
+                                                                    <div class="col-md-6 mb-2">
+                                                                        <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                                                                            <span class="fw-bold">{{ $inv->almacen->nombre }}:</span>
+                                                                            <span class="badge {{ $inv->stock <= 5 ? 'bg-danger' : 'bg-success' }}">
+                                                                                {{ $inv->stock }} unidades
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                @endforeach
+                                                            </div>
                                                         @else
-                                                            <p>No tiene inventario registrado</p>
+                                                            <div class="alert alert-warning py-2 mb-0">
+                                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                                No hay registros de stock en almacenes para este producto.
+                                                            </div>
                                                         @endif
                                                     </div>
                                                 </div>
@@ -295,6 +344,41 @@ function submitForm() {
 }
 
 document.addEventListener('click', function (e) {
+    if (e.target.closest('.btn-real-delete')) {
+        const btn = e.target.closest('.btn-real-delete');
+        const form = btn.closest('form');
+        const nombre = btn.dataset.nombre;
+        const estadoActual = btn.dataset.estado; // 1 para activo, 0 para inactivo
+
+        const denyText = (estadoActual == '1') ? '<i class="fas fa-ban me-1"></i> Poner en Inactivo' : '<i class="fas fa-check me-1"></i> Activar Producto';
+        const denyAction = (estadoActual == '1') ? 'inactivar' : 'activar';
+        const denyColor = (estadoActual == '1') ? '#ffc107' : '#28a745';
+
+        Swal.fire({
+            title: '¿Qué acción deseas realizar?',
+            text: `Seleccione cómo desea proceder con el producto "${nombre}"`,
+            icon: 'warning',
+            showCancelButton: true,
+            showDenyButton: true,
+            confirmButtonColor: '#d33',
+            denyButtonColor: denyColor,
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-trash-alt me-1"></i> Eliminar Permanente',
+            denyButtonText: denyText,
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Eliminar permanentemente
+                form.querySelector('input[name="accion"]').value = 'eliminar';
+                form.submit();
+            } else if (result.isDenied) {
+                // Inactivar o Activar
+                form.querySelector('input[name="accion"]').value = denyAction;
+                form.submit();
+            }
+        });
+    }
+
     if (e.target.closest('.btn-toggle-estado')) {
         const btn = e.target.closest('.btn-toggle-estado');
         const form = btn.closest('form');
@@ -307,7 +391,7 @@ document.addEventListener('click', function (e) {
             text: `¿Deseas ${accion} el producto "${nombre}"?`,
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33',
+            confirmButtonColor: '#3085d6',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Sí, continuar',
             cancelButtonText: 'Cancelar'
@@ -320,6 +404,4 @@ document.addEventListener('click', function (e) {
 });
 
 </script>
-
-
-    @endpush
+@endpush

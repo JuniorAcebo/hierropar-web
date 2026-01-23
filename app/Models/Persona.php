@@ -13,10 +13,13 @@ class Persona extends Model
     protected $fillable = [
         'razon_social',
         'direccion',
+        'telefono',
         'tipo_persona',
         'estado',
         'numero_documento',
-        'documento_id'
+        'documento_id',
+        'grupo_cliente_id',
+
     ];
 
     public function documento()

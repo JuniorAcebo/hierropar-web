@@ -10,10 +10,6 @@ class InventarioAlmacen extends Model
     use HasFactory;
 
     protected $table = 'inventario_almacenes';
-    public $incrementing = false;
-    protected $primaryKey = null;
-    public $timestamps = false;
-
     protected $fillable = ['producto_id', 'almacen_id', 'stock'];
 
     public function producto()

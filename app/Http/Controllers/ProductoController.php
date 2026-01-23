@@ -9,19 +9,26 @@ use App\Models\Categoria;
 use App\Models\Marca;
 use App\Models\TipoUnidad;
 use App\Models\Producto;
+use App\Services\ProductoService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+
 use Illuminate\Http\Request;
 
 class ProductoController extends Controller
 {
-    function __construct()
+    protected $productoService;
+
+    function __construct(ProductoService $productoService)
     {
+        $this->productoService = $productoService;
         $this->middleware('permission:ver-producto', ['only' => ['index']]);
         $this->middleware('permission:crear-producto', ['only' => ['create', 'store']]);
         $this->middleware('permission:editar-producto', ['only' => ['edit', 'update']]); 
+        $this->middleware('permission:eliminar-producto', ['only' => ['destroy']]);
         $this->middleware('permission:update-estado', ['only' => ['updateEstado']]);
+        $this->middleware('permission:ajustar-stock', ['only' => ['ajusteCantidad', 'updateCantidad']]);
     }
     
     public function index(Request $request)
@@ -49,15 +56,16 @@ class ProductoController extends Controller
         }
 
         $productos = $query->latest()->paginate($perPage);
+        $almacenes = Almacen::where('estado', true)->get();
 
         return view('producto.index', compact(
             'productos',
             'busqueda',
-            'perPage'
+            'perPage',
+            'almacenes'
         ));
     }
-
-    
+ 
     public function create()
     {
         $marcas = Marca::all();
@@ -124,8 +132,6 @@ class ProductoController extends Controller
         ));
     }
 
-
-
     public function update(UpdateProductoRequest $request, Producto $producto)
     {
         try {
@@ -148,8 +154,7 @@ class ProductoController extends Controller
                 ->with('error', 'Error al actualizar: ' . $e->getMessage());
         }
     }
-
-    
+ 
     public function updateEstado(Producto $producto)
     {
         $producto->estado = !$producto->estado;
@@ -159,5 +164,99 @@ class ProductoController extends Controller
             ->with('success', $producto->estado
                 ? 'Producto activado correctamente.'
                 : 'Producto desactivado correctamente.');
+    }
+
+
+    public function destroy(Request $request, Producto $producto)
+    {
+        $accion = $request->get('accion', 'eliminar');
+
+        try {
+            if ($accion === 'inactivar') {
+                $producto->estado = 0;
+                $producto->save();
+                return redirect()->route('productos.index')
+                    ->with('success', 'Producto puesto en inactivo correctamente.');
+            }
+
+            if ($accion === 'activar') {
+                $producto->estado = 1;
+                $producto->save();
+                return redirect()->route('productos.index')
+                    ->with('success', 'Producto activado correctamente.');
+            }
+
+            $this->productoService->eliminarProducto($producto);
+            return redirect()->route('productos.index')
+                ->with('success', 'Producto eliminado completamente del sistema.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al procesar la solicitud: ' . $e->getMessage());
+        }
+    }
+
+    public function ajusteCantidad(Producto $producto)
+    {
+        $almacenes = Almacen::where('estado', true)->get();
+        return view('producto.ajuste_cantidad', compact('producto', 'almacenes'));
+    }
+
+    public function updateCantidad(Request $request, Producto $producto)
+    {
+        $request->validate([
+            'almacen_id' => 'required|exists:almacenes,id',
+            'cantidad' => 'required|numeric|min:0',
+            'tipo_ajuste' => 'required|in:sumar,restar,fijar'
+        ]);
+
+        try {
+            $this->productoService->ajustarStock(
+                $producto->id, 
+                $request->almacen_id, 
+                $request->cantidad, 
+                auth()->id(),
+                $request->tipo_ajuste,
+                $request->motivo ?? 'Ajuste manual'
+            );
+            return redirect()->route('productos.index')
+                ->with('success', 'Stock ajustado correctamente.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
+        }
+    }
+    public function historialAjustes()
+    {
+        $ajustes = \App\Models\AjusteStock::with(['producto', 'almacen', 'user'])->latest()->paginate(15);
+        return view('producto.historial_ajustes', compact('ajustes'));
+    }
+
+    public function createAjuste()
+    {
+        $productos = Producto::where('estado', true)->get();
+        $almacenes = Almacen::where('estado', true)->get();
+        return view('producto.create_ajuste', compact('productos', 'almacenes'));
+    }
+    public function storeAjuste(Request $request)
+    {
+        $request->validate([
+            'producto_id' => 'required|exists:productos,id',
+            'almacen_id' => 'required|exists:almacenes,id',
+            'cantidad' => 'required|numeric|min:0',
+            'tipo_ajuste' => 'required|in:sumar,restar,fijar'
+        ]);
+
+        try {
+            $this->productoService->ajustarStock(
+                $request->producto_id, 
+                $request->almacen_id, 
+                $request->cantidad, 
+                auth()->id(),
+                $request->tipo_ajuste,
+                $request->motivo ?? 'Ajuste manual desde menú'
+            );
+            return redirect()->route('productos.historialAjustes')
+                ->with('success', 'Stock ajustado correctamente.');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
+        }
     }
 }

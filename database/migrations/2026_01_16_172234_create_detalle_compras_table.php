@@ -5,23 +5,17 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
-{
-    
+{  
+
     public function up(): void
     {
-        Schema::create('detalle_compras', function (Blueprint $table) {
-
-            $table->foreignId('producto_id')->constrained('productos')->cascadeOnDelete();
+        Schema::create('compra_producto', function (Blueprint $table) {
+            $table->id();
             $table->foreignId('compra_id')->constrained('compras')->cascadeOnDelete();
-
-            $table->integer('cantidad');
-
-            $table->decimal('precio_unitario', 10, 2)->default(0);
-            $table->decimal('precio_total', 20, 4)->default(0);
-
-            $table->string('nota_descriptiva',255)->nullable();
-            
-            $table->primary(['producto_id', 'compra_id']);
+            $table->foreignId('producto_id')->constrained('productos')->onDelete('restrict');
+            $table->decimal('cantidad', 10, 4)->unsigned();
+            $table->decimal('precio_compra', 10, 2);
+            $table->decimal('precio_venta', 10, 2);
             $table->timestamps();
         });
     }
@@ -31,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('detalle_compras');
+        Schema::dropIfExists('compra_producto');
     }
 };

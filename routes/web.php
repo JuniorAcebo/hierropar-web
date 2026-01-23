@@ -21,6 +21,15 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/',[homeController::class,'index'])->name('panel');
 
+    Route::get('productos/historial-ajustes', [ProductoController::class, 'historialAjustes'])
+    ->name('productos.historialAjustes');
+
+    Route::get('productos/crear-ajuste', [ProductoController::class, 'createAjuste'])
+    ->name('productos.createAjuste');
+
+    Route::post('productos/store-ajuste', [ProductoController::class, 'storeAjuste'])
+    ->name('productos.storeAjuste');
+
 Route::resources([
     'categorias' => CategoriaController::class,
     'marcas' => MarcaController::class,
@@ -46,6 +55,12 @@ Route::resources([
 
     Route::patch('productos/{producto}/estado', [ProductoController::class, 'updateEstado'])
     ->name('productos.updateEstado');
+
+    Route::get('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'ajusteCantidad'])
+    ->name('productos.ajusteCantidad');
+
+    Route::post('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'updateCantidad'])
+    ->name('productos.updateCantidad');
 
 
 

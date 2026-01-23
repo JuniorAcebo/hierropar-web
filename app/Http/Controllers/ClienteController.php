@@ -33,7 +33,13 @@ class ClienteController extends Controller
      */
     public function create()
     {
-        $documentos = Documento::all();
+        try {
+            DB::beginTransaction();
+            $documentos = Documento::all();
+            DB::commit();
+        } catch (Exception $e) {
+            DB::rollBack();
+        }
         return view('cliente.create', compact('documentos'));
     }
 
@@ -96,9 +102,17 @@ class ClienteController extends Controller
     /**
      * Remove the specified resource from storage.
      */
+    //funcion para eliminar cliente de la base de datos
     public function destroy(string $id)
     {
-        $message = '';
+        $persona = Persona::find($id);
+        $persona->cliente()->delete();
+        $persona->delete();
+        return redirect()->route('clientes.index')->with('success', 'Cliente eliminado');
+    }
+    // funcion para cambiar estado de cliente activo o inactivo
+    public function changeState(string $id)
+    {
         $persona = Persona::find($id);
         if ($persona->estado == 1) {
             Persona::where('id', $persona->id)

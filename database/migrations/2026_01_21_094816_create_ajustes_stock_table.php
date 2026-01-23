@@ -6,15 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    
+    /**
+     * Run the migrations.
+     */
     public function up(): void
     {
-        Schema::create('inventario_almacenes', function (Blueprint $table) {
+        Schema::create('ajustes_stock', function (Blueprint $table) {
             $table->id();
             $table->foreignId('producto_id')->constrained('productos')->cascadeOnDelete();
             $table->foreignId('almacen_id')->constrained('almacenes')->cascadeOnDelete();
-            $table->integer('stock')->default(0);
-            $table->unique(['producto_id', 'almacen_id']);
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->decimal('cantidad_anterior', 10, 4);
+            $table->decimal('cantidad_nueva', 10, 4);
+            $table->string('motivo')->nullable();
             $table->timestamps();
         });
     }
@@ -24,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('inventario_almacenes');
+        Schema::dropIfExists('ajustes_stock');
     }
 };
