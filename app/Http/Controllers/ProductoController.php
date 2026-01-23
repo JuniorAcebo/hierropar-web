@@ -160,7 +160,4 @@ class ProductoController extends Controller
                 ? 'Producto activado correctamente.'
                 : 'Producto desactivado correctamente.');
     }
-
-
-
 }
