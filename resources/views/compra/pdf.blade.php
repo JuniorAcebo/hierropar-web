@@ -120,11 +120,11 @@
     <table class="info-table">
         <tr>
             <td width="20%"><strong>Proveedor:</strong></td>
-            <td>{{ $compra->proveedore->persona->razon_social }}</td>
+            <td>{{ $compra->proveedor->persona->razon_social }}</td>
         </tr>
         <tr>
             <td><strong>Documento:</strong></td>
-            <td>{{ $compra->proveedore->persona->tipo_documento }} {{ $compra->proveedore->persona->numero_documento }}
+            <td>{{ $compra->proveedor->persona->tipo_documento }} {{ $compra->proveedor->persona->numero_documento }}
             </td>
         </tr>
         <tr>
@@ -149,15 +149,15 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($compra->productos as $producto)
+            @foreach ($compra->detalles as $detalle)
                 <tr>
                     <td class="text-center">{{ $loop->iteration }}</td>
-                    <td>{{ $compra->productos->count() > 5 ? Str::limit($producto->nombre, 20) : $producto->nombre }}
+                    <td>{{ $compra->detalles->count() > 5 ? Str::limit($detalle->producto->nombre, 20) : $detalle->producto->nombre }}
                     </td>
-                    <td class="text-right">{{ $producto->pivot->cantidad }}</td>
-                    <td class="text-right">Bs. {{ number_format($producto->pivot->precio_compra, 2) }}</td>
+                    <td class="text-right">{{ $detalle->cantidad }}</td>
+                    <td class="text-right">Bs. {{ number_format($detalle->precio_compra, 2) }}</td>
                     <td class="text-right">Bs.
-                        {{ number_format($producto->pivot->cantidad * $producto->pivot->precio_compra, 2) }}</td>
+                        {{ number_format($detalle->cantidad * $detalle->precio_compra, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -180,6 +180,9 @@
 
     <div style="text-align: center; font-size: 8px; margin-top: 3px;">
         {{ now()->format('d/m/Y H:i') }} - Documento no válido como factura
+    </div>
+    <div style="text-align: center; font-size: 8px; margin-top: 3px;">
+        {{ $compra->nota_personal }}
     </div>
 </body>
 

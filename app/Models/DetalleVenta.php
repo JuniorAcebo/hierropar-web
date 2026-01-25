@@ -10,10 +10,9 @@ class DetalleVenta extends Model
     use HasFactory;
 
     protected $table = 'detalle_ventas';
-    public $incrementing = false; // PK compuesta
     public $timestamps = true;
 
-    protected $fillable = ['producto_id', 'venta_id', 'cantidad', 'precio_unitario', 'precio_total', 'nota_personal', 'nota_cliente'];
+    protected $fillable = ['venta_id', 'producto_id', 'cantidad', 'precio_venta', 'descuento'];
 
     public function venta()
     {

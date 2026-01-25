@@ -34,14 +34,32 @@
                 <div class="row">
                     <!--Proveedor-->
                     <div class="col-md-4 mb-3">
-                        <label for="proveedore_id" class="form-label">Proveedor:</label>
-                        <select name="proveedore_id" id="proveedore_id" class="form-control selectpicker show-tick"
+                        <label for="proveedor_id" class="form-label">Proveedor:</label>
+                        <select name="proveedor_id" id="proveedor_id" class="form-control selectpicker show-tick"
                             data-live-search="true" title="Seleccione un proveedor" data-size='5'>
                             @foreach ($proveedores as $item)
-                                <option value="{{ $item->id }}">{{ $item->persona->razon_social }}</option>
+                                <option value="{{ $item->id }}" {{ old('proveedor_id') == $item->id ? 'selected' : '' }}>
+                                    {{ $item->persona->razon_social }}
+                                </option>
                             @endforeach
                         </select>
-                        @error('proveedore_id')
+                        @error('proveedor_id')
+                            <small class="text-danger">{{ '*' . $message }}</small>
+                        @enderror
+                    </div>
+
+                    <!--Sucursal / Almacen-->
+                    <div class="col-md-4 mb-3">
+                        <label for="almacen_id" class="form-label">Sucursal:</label>
+                        <select name="almacen_id" id="almacen_id" class="form-control selectpicker"
+                            title="Seleccione sucursal" required>
+                            @foreach ($almacenes as $item)
+                                <option value="{{ $item->id }}" {{ old('almacen_id') == $item->id ? 'selected' : '' }}>
+                                    {{ $item->nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('almacen_id')
                             <small class="text-danger">{{ '*' . $message }}</small>
                         @enderror
                     </div>
@@ -52,7 +70,9 @@
                         <select name="comprobante_id" id="comprobante_id" class="form-control selectpicker"
                             title="Seleccione tipo">
                             @foreach ($comprobantes as $item)
-                                <option value="{{ $item->id }}">{{ $item->tipo_comprobante }}</option>
+                                <option value="{{ $item->id }}" {{ old('comprobante_id') == $item->id ? 'selected' : '' }}>
+                                    {{ $item->tipo_comprobante }}
+                                </option>
                             @endforeach
                         </select>
                         @error('comprobante_id')
@@ -60,15 +80,44 @@
                         @enderror
                     </div>
 
-                    <!--Numero de comprobante (oculto y generado automáticamente)-->
-                    <input type="hidden" name="numero_comprobante" value="{{ $nextComprobanteNumber }}">
+                    <!--Numero de comprobante-->
+                    <div class="col-md-3 mb-3">
+                        <label for="numero_comprobante" class="form-label">Nro. Comprobante:</label>
+                        <input type="text" name="numero_comprobante" id="numero_comprobante" class="form-control" 
+                            value="{{ old('numero_comprobante') }}" placeholder="Ej: 00000001" required>
+                        @error('numero_comprobante')
+                            <small class="text-danger">{{ '*' . $message }}</small>
+                        @enderror
+                    </div>
 
                     <!--Fecha-->
-                    <div class="col-md-4 mb-3">
+                    <div class="col-md-3 mb-3">
                         <label for="fecha" class="form-label">Fecha:</label>
-                        <input readonly type="date" name="fecha" id="fecha" class="form-control"
-                            value="<?php echo date('Y-m-d'); ?>">
+                        <input type="date" name="fecha" id="fecha" class="form-control"
+                            value="{{ date('Y-m-d') }}">
                         <input type="hidden" name="fecha_hora" value="{{ now()->toDateTimeString() }}">
+                    </div>
+
+                    <!--Costo Transporte-->
+                    <div class="col-md-3 mb-3">
+                        <label for="costo_transporte" class="form-label">Costo Transporte:</label>
+                        <input type="number" step="0.01" name="costo_transporte" id="costo_transporte" class="form-control" 
+                            value="{{ old('costo_transporte', 0) }}">
+                    </div>
+
+                    <!--Estado de Entrega-->
+                    <div class="col-md-3 mb-3">
+                        <label for="estado_entrega" class="form-label">Estado Entrega:</label>
+                        <select name="estado_entrega" id="estado_entrega" class="form-control selectpicker">
+                            <option value="entregado">Entregado (Suma Stock)</option>
+                            <option value="por_entregar">Por recibir (Pendiente)</option>
+                        </select>
+                    </div>
+
+                    <!--Nota-->
+                    <div class="col-12 mb-3">
+                        <label for="nota_personal" class="form-label">Notas / Observaciones:</label>
+                        <textarea name="nota_personal" id="nota_personal" class="form-control" rows="2">{{ old('nota_personal') }}</textarea>
                     </div>
                 </div>
             </div>

@@ -43,6 +43,12 @@ class Producto extends Model
         return $this->hasMany(InventarioAlmacen::class, 'producto_id');
     }
 
+    public function compras()
+    {
+        return $this->belongsToMany(Compra::class, 'detalle_compras')
+                    ->withPivot('cantidad', 'precio_compra', 'precio_venta');
+    }
+
     public function detalleCompras()
     {
         return $this->hasMany(DetalleCompra::class, 'producto_id');
@@ -56,5 +62,18 @@ class Producto extends Model
     public function detalleTraslados()
     {
         return $this->hasMany(DetalleTraslado::class, 'producto_id');
+    }
+
+    public function almacenes()
+    {
+        return $this->belongsToMany(Almacen::class, 'inventario_almacenes')
+                    ->withPivot('stock')
+                    ->withTimestamps();
+    }
+    
+    // Helper para obtener stock total
+    public function getStockTotalAttribute()
+    {
+        return $this->inventarios()->sum('stock');
     }
 }

@@ -174,15 +174,13 @@
         <li class="breadcrumb-item"><a href="{{ route('panel') }}">Inicio</a></li>
         <li class="breadcrumb-item active">Proveedores</li>
     </ol>
-
-    @can('crear-proveedore')
+    @can('crear-proveedor')
     <div class="mb-4">
         <a href="{{route('proveedores.create')}}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i> Añadir nuevo registro
         </a>
     </div>
     @endcan
-
     <div class="card mb-4">
         <div class="card-header">
             <i class="fas fa-table me-1"></i>

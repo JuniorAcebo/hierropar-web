@@ -197,6 +197,7 @@
                             <th>Nombre</th>
                             <th>Dirección</th>
                             <th>Documento</th>
+                            <th>Telefono</th>
                             <th>Tipo de persona</th>
                             <th>Estado</th>
                             <th>Acciones</th>
@@ -216,6 +217,9 @@
                                         <div class="documento-tipo">{{ $item->persona->documento->tipo_documento }}</div>
                                         <div class="documento-numero">{{ $item->persona->numero_documento }}</div>
                                     </div>
+                                </td>
+                                <td>
+                                    {{ $item->persona->telefono }}
                                 </td>
                                 <td>
                                     {{ ucfirst($item->persona->tipo_persona) }}

@@ -169,13 +169,13 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($venta->productos as $producto)
+            @foreach ($venta->detalles as $detalle)
                 <tr>
                     <td class="text-center">{{ $loop->iteration }}</td>
-                    <td>{{ $venta->productos->count() > 5 ? Str::limit($producto->nombre, 20) : $producto->nombre }}</td>
-                    <td class="text-right">{{ $producto->pivot->cantidad }}</td>
-                    <td class="text-right">Bs. {{ number_format($producto->pivot->precio_venta, 2) }}</td>
-                    <td class="text-right">Bs. {{ number_format($producto->pivot->cantidad * $producto->pivot->precio_venta, 2) }}</td>
+                    <td>{{ $venta->detalles->count() > 5 ? Str::limit($detalle->producto->nombre, 20) : $detalle->producto->nombre }}</td>
+                    <td class="text-right">{{ $detalle->cantidad }}</td>
+                    <td class="text-right">Bs. {{ number_format($detalle->precio_venta, 2) }}</td>
+                    <td class="text-right">Bs. {{ number_format($detalle->cantidad * $detalle->precio_venta, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>
