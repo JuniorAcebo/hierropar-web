@@ -62,6 +62,16 @@ Route::resources([
     Route::post('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'updateCantidad'])
     ->name('productos.updateCantidad');
 
+    // Rutas API para Traslados
+    Route::get('traslados/api/productos', [TrasladoController::class, 'getProductos'])
+    ->name('traslados.api.productos');
+
+    Route::get('traslados/api/stock', [TrasladoController::class, 'getStockProducto'])
+    ->name('traslados.api.stock');
+
+    Route::get('traslados/api/almacenes', [TrasladoController::class, 'getAlmacenes'])
+    ->name('traslados.api.almacenes');
+
 
 
 Route::get('/compras/pdf/{id}', [compraController::class, 'generarPdf'])->name('compras.pdf');
