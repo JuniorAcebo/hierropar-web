@@ -14,18 +14,22 @@ class ProveedorController extends Controller
 {
     function __construct()
     {
-        $this->middleware('permission:ver-proveedore|crear-proveedore|editar-proveedore|eliminar-proveedore', ['only' => ['index']]);
-        $this->middleware('permission:crear-proveedore', ['only' => ['create', 'store']]);
-        $this->middleware('permission:editar-proveedore', ['only' => ['edit', 'update']]);
-        $this->middleware('permission:eliminar-proveedore', ['only' => ['destroy']]);
+        $this->middleware('permission:ver-proveedor|crear-proveedor|editar-proveedor|dar-de-baja-proveedor', ['only' => ['index']]);
+        $this->middleware('permission:crear-proveedor', ['only' => ['create', 'store']]);
+        $this->middleware('permission:editar-proveedor', ['only' => ['edit', 'update']]);
+        $this->middleware('permission:dar-de-baja-proveedor', ['only' => ['destroy']]);
     }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $proveedores = Proveedor::with('persona.documento')->get();
-        return view('proveedore.index',compact('proveedores'));
+        try{
+            $proveedores = Proveedor::with('persona.documento')->get();
+            return view('proveedor.index',compact('proveedores'));
+        }catch(Exception $e){
+            return redirect()->route('proveedores.index')->with('error', 'Error al mostrar proveedores');
+        }
     }
 
     /**
@@ -33,8 +37,12 @@ class ProveedorController extends Controller
      */
     public function create()
     {
-        $documentos = Documento::all();
-        return view('proveedore.create',compact('documentos'));
+        try{
+            $documentos = Documento::all();
+            return view('proveedor.create',compact('documentos'));
+        }catch(Exception $e){
+            return redirect()->route('proveedores.create')->with('error', 'Error al mostrar proveedores');
+        }
     }
 
     /**
@@ -42,10 +50,10 @@ class ProveedorController extends Controller
      */
     public function store(StorePersonaRequest $request)
     {
-        try {
+        try{
             DB::beginTransaction();
             $persona = Persona::create($request->validated());
-            $persona->proveedore()->create([
+            $persona->proveedor()->create([
                 'persona_id' => $persona->id
             ]);
             DB::commit();
@@ -61,7 +69,12 @@ class ProveedorController extends Controller
      */
     public function show(string $id)
     {
-        //
+        try{
+            $proveedor = Proveedor::with('persona.documento')->find($id);
+            return view('proveedor.show',compact('proveedor'));
+        }catch(Exception $e){   
+            return redirect()->route('proveedores.show')->with('error', 'Error al mostrar proveedor');
+        }
     }
 
     /**
@@ -69,9 +82,13 @@ class ProveedorController extends Controller
      */
     public function edit(Proveedore $proveedore)
     {
-        $proveedore->load('persona.documento');
-        $documentos = Documento::all();
-        return view('proveedore.edit',compact('proveedore','documentos'));
+        try{
+            $proveedore->load('persona.documento');
+            $documentos = Documento::all();
+            return view('proveedor.edit',compact('proveedore','documentos'));
+        }catch(Exception $e){
+            return redirect()->route('proveedores.edit')->with('error', 'Error al mostrar proveedor');
+        }
     }
 
     /**

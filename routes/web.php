@@ -30,6 +30,8 @@ Route::get('/',[homeController::class,'index'])->name('panel');
     Route::post('productos/store-ajuste', [ProductoController::class, 'storeAjuste'])
     ->name('productos.storeAjuste');
 
+    Route::get('/ventas/check-stock', [VentaController::class, 'checkStock'])->name('ventas.check-stock');
+
 Route::resources([
     'categorias' => CategoriaController::class,
     'marcas' => MarcaController::class,
@@ -62,6 +64,7 @@ Route::resources([
     Route::post('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'updateCantidad'])
     ->name('productos.updateCantidad');
 
+<<<<<<< HEAD
     // Rutas API para Traslados
     Route::get('traslados/api/productos', [TrasladoController::class, 'getProductos'])
     ->name('traslados.api.productos');
@@ -71,6 +74,10 @@ Route::resources([
 
     Route::get('traslados/api/almacenes', [TrasladoController::class, 'getAlmacenes'])
     ->name('traslados.api.almacenes');
+=======
+    Route::get('/productos/check-stock', [ProductoController::class, 'checkStock'])
+    ->name('productos.checkStock');
+>>>>>>> origin/AronDev
 
 
 

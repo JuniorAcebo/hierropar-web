@@ -6,16 +6,22 @@ use App\Http\Requests\StoreVentaRequest;
 use App\Models\Cliente;
 use App\Models\Producto;
 use App\Models\Venta;
+use App\Models\Comprobante;
+use App\Models\InventarioAlmacen;
 use Exception;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use App\Services\VentaService;
 
 class VentaController extends Controller
 {
-    function __construct()
+    protected $ventaService;
+
+    function __construct(VentaService $ventaService)
     {
-        $this->middleware('permission:ver-venta|crear-venta|mostrar-venta|eliminar-venta', ['only' => ['index']]);
+        $this->ventaService = $ventaService;
+        $this->middleware('permission:ver-venta|crear-venta|mostrar-venta|eliminar-venta', ['only' => ['index', 'show']]);
         $this->middleware('permission:crear-venta', ['only' => ['create', 'store']]);
         $this->middleware('permission:mostrar-venta', ['only' => ['show']]);
         $this->middleware('permission:editar-venta', ['only' => ['edit', 'update']]);
@@ -26,7 +32,7 @@ class VentaController extends Controller
     {
         $ventas = Venta::with([
             'comprobante',
-            'cliente.persona', // Esta carga eager está bien
+            'cliente.persona',
             'user'
         ])
             ->where('estado', 1)
@@ -42,13 +48,13 @@ class VentaController extends Controller
             'comprobante',
             'cliente.persona',
             'user',
-            'productos' => fn($q) => $q->withPivot('cantidad', 'precio_venta', 'descuento')
+            'detalles.producto'
         ])->findOrFail($id);
 
         $pdf = Pdf::loadView('venta.pdf', compact('venta'))
             ->setPaper('a4', 'portrait');
 
-        $fileName = "VENTA-{$venta->numero_comprobante}-{$venta->cliente->persona->nombre}.pdf";
+        $fileName = "VENTA-{$venta->numero_comprobante}-{$venta->cliente->persona->razon_social}.pdf";
 
         if ($request->has('print')) {
             return $pdf->stream($fileName);
@@ -59,17 +65,39 @@ class VentaController extends Controller
 
     public function create()
     {
+        // Obtener productos activos con información básica
         $productos = Producto::where('estado', 1)
-            ->where('stock', '>', 0)
-            ->get(['id', 'codigo', 'nombre', 'stock', 'precio_compra', 'precio_venta']);
+            ->get(['id', 'codigo', 'nombre', 'precio_compra', 'precio_venta']);
 
-        $clientes = Cliente::with('persona')
-            ->whereHas('persona', fn($q) => $q->where('estado', 1))
-            ->get();
+        $clientes = Cliente::with(['persona' => function ($query) {
+            $query->where('estado', 1);
+        }])->get();
 
+        $comprobantes = Comprobante::all();
+        $almacenes = \App\Models\Almacen::where('estado', 1)->get();
         $nextComprobanteNumber = $this->getNextComprobanteNumber();
 
-        return view('venta.create', compact('productos', 'clientes', 'comprobantes', 'nextComprobanteNumber'));
+        return view('venta.create', compact('productos', 'clientes', 'comprobantes', 'almacenes', 'nextComprobanteNumber'));
+    }
+
+    // Nuevo método para consultar stock por almacén
+    public function checkStock(Request $request)
+    {
+        $request->validate([
+            'producto_id' => 'required|exists:productos,id',
+            'almacen_id' => 'required|exists:almacenes,id'
+        ]);
+
+        $inventario = InventarioAlmacen::where('producto_id', $request->producto_id)
+            ->where('almacen_id', $request->almacen_id)
+            ->first();
+
+        $stock = $inventario ? $inventario->stock : 0;
+
+        return response()->json([
+            'success' => true,
+            'stock' => (float) $stock
+        ]);
     }
 
     protected function getNextComprobanteNumber()
@@ -82,14 +110,50 @@ class VentaController extends Controller
     {
         try {
             DB::beginTransaction();
+            
+            // Validar stock antes de crear nada
+            $items = [];
+            foreach ($request->arrayidproducto as $index => $productoId) {
+                $items[] = [
+                    'producto_id' => $productoId,
+                    'cantidad' => $request->arraycantidad[$index]
+                ];
+            }
+            $this->ventaService->validarStockDisponible($items, $request->almacen_id);
 
-            $ventaData = $request->validated();
-            $ventaData['user_id'] = auth()->id();
-            $ventaData['fecha_hora'] = now();
+            $venta = Venta::create([
+                'fecha_hora' => now(),
+                'numero_comprobante' => $request->numero_comprobante,
+                'total' => 0,
+                'estado_pago' => 'pendiente',
+                'estado_entrega' => 'por_entregar',
+                'cliente_id' => $request->cliente_id,
+                'almacen_id' => $request->almacen_id,
+                'comprobante_id' => $request->comprobante_id,
+                'user_id' => auth()->id(),
+                'nota_personal' => $request->nota_personal ?? null,
+            ]);
 
-            $venta = Venta::create($ventaData);
+            $total = 0;
+            foreach ($request->arrayidproducto as $index => $productoId) {
+                $cantidad = $request->arraycantidad[$index];
+                $precioVenta = $request->arrayprecioventa[$index];
+                $descuento = $request->arraydescuento[$index] ?? 0;
 
-            $this->processProductos($venta, $request);
+                $venta->detalles()->create([
+                    'producto_id' => $productoId,
+                    'cantidad' => $cantidad,
+                    'precio_venta' => $precioVenta,
+                    'descuento' => $descuento
+                ]);
+
+                $total += ($cantidad * $precioVenta) - $descuento;
+            }
+
+            $venta->update(['total' => $total]);
+
+            // Procesar salida de stock
+            $this->ventaService->procesarSalidaStock($venta);
 
             DB::commit();
 
@@ -103,47 +167,10 @@ class VentaController extends Controller
         }
     }
 
-    protected function processProductos(Venta $venta, Request $request)
-    {
-        $productos = $request->get('arrayidproducto', []);
-        $cantidades = $request->get('arraycantidad', []);
-        $preciosVenta = $request->get('arrayprecioventa', []);
-        $descuentos = $request->get('arraydescuento', []);
-
-        if (
-            count($productos) !== count($cantidades) ||
-            count($productos) !== count($preciosVenta) ||
-            count($productos) !== count($descuentos)
-        ) {
-            throw new Exception('Datos de productos inconsistentes');
-        }
-
-        foreach ($productos as $index => $productoId) {
-            $cantidad = (float) $cantidades[$index];
-            $precioVenta = (float) $preciosVenta[$index];
-            $descuento = (float) ($descuentos[$index] ?? 0);
-
-            $producto = Producto::findOrFail($productoId);
-            $compra = $producto->compras()->latest()->first();
-            $compraId = $compra ? $compra->id : null;
-
-            if ($producto->stock < $cantidad) {
-                throw new Exception("Stock insuficiente para el producto: {$producto->nombre}");
-            }
-
-            $venta->productos()->attach($productoId, [
-                'cantidad' => $cantidad,
-                'precio_venta' => $precioVenta,
-                'descuento' => $descuento,
-                'compra_id' => $compraId
-            ]);
-
-            $producto->decrement('stock', $cantidad);
-        }
-    }
-
     public function show(Venta $venta)
     {
+        $venta->load(['comprobante', 'cliente.persona', 'user', 'detalles.producto', 'almacen']);
+
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -159,55 +186,74 @@ class VentaController extends Controller
         $venta = Venta::with([
             'comprobante',
             'cliente.persona',
-            'productos' => fn($q) => $q->withPivot('cantidad', 'precio_venta', 'descuento')
+            'detalles.producto'
         ])->findOrFail($id);
 
-        $productos = Producto::where('estado', 1)
-            ->where(function ($query) use ($venta) {
-                $query->where('stock', '>', 0)
-                    ->orWhereIn('id', $venta->productos->pluck('id'));
-            })
-            ->get(['id', 'codigo', 'nombre', 'stock', 'precio_venta']);
-
-        // 🔹 Ajustar el stock sumando la cantidad de la venta
-        foreach ($venta->productos as $detalle) {
-            $producto = $productos->firstWhere('id', $detalle->id);
-            if ($producto) {
-                $producto->stock += $detalle->pivot->cantidad;
-            }
-        }
-
+        $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        $comprobantes = Comprobante::all();
+        
+        $productos = Producto::where('estado', 1)->get();
+        
         $clientes = Cliente::with(['persona' => function ($query) {
             $query->where('estado', 1);
         }])->get();
 
-
-        return view('venta.edit', compact('venta', 'productos', 'clientes', 'comprobantes'));
+        return view('venta.edit', compact('venta', 'productos', 'clientes', 'comprobantes', 'almacenes'));
     }
-
 
     public function update(Request $request, string $id)
     {
         try {
             DB::beginTransaction();
 
-            $venta = Venta::with('productos')->findOrFail($id);
+            $venta = Venta::with('detalles')->findOrFail($id);
 
-            foreach ($venta->productos as $producto) {
-                $producto->increment('stock', (float) $producto->pivot->cantidad);
-            }
+            // 1. Revertir stock (devolver entrada)
+            $this->ventaService->revertirStock($venta);
 
-            $venta->productos()->detach();
+            // 2. Eliminar detalles viejos
+            $venta->detalles()->delete();
 
+            // 3. Update Venta info
             $venta->update([
                 'numero_comprobante' => $request->numero_comprobante,
                 'fecha_hora' => $request->fecha_hora ?? now(),
-                'total' => (float) $request->total,
+                'cliente_id' => $request->cliente_id,
+                'almacen_id' => $request->almacen_id,
                 'comprobante_id' => $request->comprobante_id,
-                'cliente_id' => $request->cliente_id
+                'nota_personal' => $request->nota_personal ?? null,
             ]);
 
-            $this->processProductos($venta, $request);
+            // 4. Create new details
+            $total = 0;
+            $items = [];
+            foreach ($request->arrayidproducto as $index => $productoId) {
+                $items[] = [
+                    'producto_id' => $productoId,
+                    'cantidad' => $request->arraycantidad[$index]
+                ];
+            }
+            
+            $this->ventaService->validarStockDisponible($items, $request->almacen_id);
+
+            foreach ($request->arrayidproducto as $index => $productoId) {
+                $cantidad = $request->arraycantidad[$index];
+                $precioVenta = $request->arrayprecioventa[$index];
+                $descuento = $request->arraydescuento[$index] ?? 0;
+
+                $venta->detalles()->create([
+                    'producto_id' => $productoId,
+                    'cantidad' => $cantidad,
+                    'precio_venta' => $precioVenta,
+                    'descuento' => $descuento
+                ]);
+                
+               $total += ($cantidad * $precioVenta) - $descuento;
+            }
+            $venta->update(['total' => $total]);
+
+            // 5. Salida stock nuevamente
+            $this->ventaService->procesarSalidaStock($venta);
 
             DB::commit();
 
@@ -225,13 +271,13 @@ class VentaController extends Controller
     {
         try {
             DB::transaction(function () use ($id) {
-                $venta = Venta::with('productos')->findOrFail($id);
+                $venta = Venta::with('detalles')->findOrFail($id);
 
-                foreach ($venta->productos as $producto) {
-                    $producto->increment('stock', (float) $producto->pivot->cantidad);
-                }
+                // Revert stock
+                $this->ventaService->revertirStock($venta);
 
-                $venta->productos()->detach();
+                // Delete details and sale
+                $venta->detalles()->delete();
                 $venta->delete();
             });
 

@@ -236,14 +236,14 @@
             </div>
 
             <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <div class="form-group">
-                        <label for="proveedore_id">Proveedor</label>
-                        <select class="form-control select2-search" id="proveedore_id" name="proveedore_id" required>
+                        <label for="proveedor_id">Proveedor</label>
+                        <select class="form-control select2-search" id="proveedor_id" name="proveedor_id" required>
                             <option value="">Seleccione proveedor</option>
                             @foreach ($proveedores as $proveedor)
                                 @if ($proveedor->persona)
-                                    <option value="{{ $proveedor->id }}" @selected($compra->proveedore_id == $proveedor->id)>
+                                    <option value="{{ $proveedor->id }}" @selected($compra->proveedor_id == $proveedor->id)>
                                         {{ $proveedor->persona->razon_social ?? 'Proveedor sin nombre' }}
                                         ({{ $proveedor->persona->numero_documento ?? '' }})
                                     </option>
@@ -253,7 +253,20 @@
                     </div>
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="almacen_id">Sucursal / Almacén</label>
+                        <select class="form-control" id="almacen_id" name="almacen_id" required>
+                            @foreach ($almacenes as $almacen)
+                                <option value="{{ $almacen->id }}" @selected($compra->almacen_id == $almacen->id)>
+                                    {{ $almacen->nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
                     <div class="form-group">
                         <label for="comprobante_id">Comprobante</label>
                         <select class="form-control" id="comprobante_id" name="comprobante_id" required>
@@ -275,16 +288,16 @@
                 </div>
                 <div class="card-body">
                     <div id="productos-container">
-                        @foreach ($compra->productos as $producto)
+                        @foreach ($compra->detalles as $detalle)
                             @php
+                                $producto = $detalle->producto;
                                 $productoInfo = $productosInfo[$producto->id] ?? null;
                                 $vendido = $productoInfo['vendido'] ?? 0;
-                                $minimoPermitido = $productoInfo['minimo_permitido'] ?? $vendido;
+                                $minimoPermitido = $productoInfo['minimo_permitido'] ?? 0;
                                 // Formatear valores para mostrar
-                                $cantidadFormateada = number_format($producto->pivot->cantidad, 2, '.', '');
-                                $precioCompraFormateado = number_format($producto->pivot->precio_compra, 2, '.', '');
-                                $precioVentaFormateado = number_format($producto->pivot->precio_venta, 2, '.', '');
-                                $stockFormateado = number_format($producto->stock, 2, '.', '');
+                                $cantidadFormateada = number_format($detalle->cantidad, 2, '.', '');
+                                $precioCompraFormateado = number_format($detalle->precio_compra, 2, '.', '');
+                                $precioVentaFormateado = number_format($detalle->precio_venta, 2, '.', '');
                             @endphp
 
                             <div class="row producto-row mb-3">
@@ -320,6 +333,7 @@
                                             Mínimo: {{ number_format($minimoPermitido, 2, '.', '') }}
                                         </small>
                                     @endif
+                                    
                                 </div>
                                 <div class="col-md-2">
                                     <div class="input-group">

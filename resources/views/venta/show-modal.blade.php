@@ -36,13 +36,13 @@
             </tr>
         </thead>
         <tbody class="small">
-            @foreach ($venta->productos as $index => $producto)
+            @foreach ($venta->detalles as $index => $detalle)
                 <tr>
                     <td>{{ $index + 1 }}</td>
-                    <td>{{ $producto->nombre }}</td>
-                    <td class="text-end">{{ number_format($producto->pivot->cantidad, 2) }} UNI</td>
-                    <td class="text-end">{{ number_format($producto->pivot->precio_venta, 2) }}</td>
-                    <td class="text-end">{{ number_format($producto->pivot->cantidad * $producto->pivot->precio_venta, 2) }}</td>
+                    <td>{{ $detalle->producto->nombre }}</td>
+                    <td class="text-end">{{ number_format($detalle->cantidad, 2) }} UNI</td>
+                    <td class="text-end">{{ number_format($detalle->precio_venta, 2) }}</td>
+                    <td class="text-end">{{ number_format($detalle->cantidad * $detalle->precio_venta, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>

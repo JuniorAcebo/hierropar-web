@@ -10,7 +10,21 @@ class Venta extends Model
     use HasFactory;
     protected $table = 'ventas';
 
-    protected $fillable = ['fecha_hora', 'cliente_id', 'user_id'];
+    protected $fillable = [
+        'fecha_hora', 
+        'numero_comprobante', 
+        'total', 
+        'estado_pago', 
+        'estado_entrega', 
+        'estado', 
+        'cliente_id', 
+        'grupo_cliente_id', 
+        'almacen_id', 
+        'user_id', 
+        'comprobante_id',
+        'nota_personal',
+        'nota_cliente'
+    ];
 
     public function cliente()
     {
@@ -20,6 +34,16 @@ class Venta extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function comprobante()
+    {
+        return $this->belongsTo(Comprobante::class, 'comprobante_id');
+    }
+
+    public function almacen()
+    {
+        return $this->belongsTo(Almacen::class, 'almacen_id');
     }
 
     public function detalles()

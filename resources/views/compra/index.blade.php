@@ -340,8 +340,8 @@
                                 </td>
                                 <td>
                                     <div class="proveedor-info">
-                                        <div class="proveedor-tipo">{{ ucfirst($item->proveedore->persona->tipo_persona) }}</div>
-                                        <div class="proveedor-nombre">{{ $item->proveedore->persona->razon_social }}</div>
+                                        <div class="proveedor-tipo">{{ ucfirst($item->proveedor->persona->tipo_persona) }}</div>
+                                        <div class="proveedor-nombre">{{ $item->proveedor->persona->razon_social }}</div>
                                     </div>
                                 </td>
                                 <td>

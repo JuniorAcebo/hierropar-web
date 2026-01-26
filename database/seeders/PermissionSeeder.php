@@ -37,6 +37,7 @@ class PermissionSeeder extends Seeder
             'ver-role',
             'crear-role',
             'editar-role',
+            'eliminar-role',
 
             //Traslado
             'ver-traslado',
@@ -47,20 +48,21 @@ class PermissionSeeder extends Seeder
             'ver-cliente',
             'crear-cliente',
             'editar-cliente',
+            'eliminar-cliente',
 
             //Proveedor
             'ver-proveedor',
             'crear-proveedor',
             'editar-proveedor',
             'dar-de-baja-proveedor',
-
+            
             //Compra
             'ver-compra',
             'crear-compra',
             'editar-compra',
             'mostrar-compra',
             'eliminar-compra',
-
+           
             //Producto
             'ver-producto',
             'crear-producto',

@@ -25,7 +25,7 @@ return new class extends Migration
             $table->tinyInteger('estado')->default(1);
             
             $table->foreignId('comprobante_id')->nullable()->constrained('comprobantes')->onDelete('set null');
-            $table->foreignId('proveedore_id')->nullable()->constrained('proveedores')->onDelete('set null');
+            $table->foreignId('proveedor_id')->nullable()->constrained('proveedores')->onDelete('set null');
             $table->foreignId('almacen_id')->constrained('almacenes')->onDelete('restrict');
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
             

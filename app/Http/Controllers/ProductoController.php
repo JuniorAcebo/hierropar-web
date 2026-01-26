@@ -259,4 +259,19 @@ class ProductoController extends Controller
             return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
         }
     }
+    public function checkStock(Request $request)
+    {
+        $request->validate([
+            'producto_id' => 'required|exists:productos,id',
+            'almacen_id' => 'required|exists:almacenes,id',
+        ]);
+
+        $inventario = \App\Models\InventarioAlmacen::where('producto_id', $request->producto_id)
+            ->where('almacen_id', $request->almacen_id)
+            ->first();
+
+        return response()->json([
+            'stock' => $inventario ? $inventario->stock : 0
+        ]);
+    }
 }

@@ -5,7 +5,7 @@
     </div>
 
     <div class="row small mb-2">
-        <div class="col-6"><strong>PROVEEDOR:</strong> {{ $compra->proveedore->persona->razon_social }}</div>
+        <div class="col-6"><strong>PROVEEDOR:</strong> {{ $compra->proveedor->persona->razon_social }}</div>
     </div>
 
     <hr class="my-2">
@@ -16,7 +16,7 @@
     </div>
 
     <div class="row small mb-3">
-        <div class="col-6"><strong>USUARIO:</strong> {{ auth()->user()->name }}</div>
+        <div class="col-6"><strong>USUARIO:</strong> {{ $compra->user->name ?? 'N/A' }}</div>
         <div class="col-6"><strong>FECHA:</strong>
             {{ \Carbon\Carbon::parse($compra->fecha_hora)->format('d/m/Y H:i') }}</div>
     </div>
@@ -32,14 +32,14 @@
             </tr>
         </thead>
         <tbody class="small">
-            @foreach ($compra->productos as $index => $producto)
+            @foreach ($compra->detalles as $index => $detalle)
                 <tr>
                     <td>{{ $index + 1 }}</td>
-                    <td>{{ $producto->nombre }}</td>
-                    <td class="text-end">{{ number_format($producto->pivot->cantidad, 2) }} UNI</td>
-                    <td class="text-end">{{ number_format($producto->pivot->precio_compra, 2) }}</td>
+                    <td>{{ $detalle->producto->nombre }}</td>
+                    <td class="text-end">{{ number_format($detalle->cantidad, 2) }} UNI</td>
+                    <td class="text-end">{{ number_format($detalle->precio_compra, 2) }}</td>
                     <td class="text-end">
-                        {{ number_format($producto->pivot->cantidad * $producto->pivot->precio_compra, 2) }}</td>
+                        {{ number_format($detalle->cantidad * $detalle->precio_compra, 2) }}</td>
                 </tr>
             @endforeach
         </tbody>

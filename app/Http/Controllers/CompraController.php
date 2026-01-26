@@ -4,9 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCompraRequest;
 use App\Models\Compra;
-use App\Models\Comprobante;
 use App\Models\Producto;
-use App\Models\Proveedore;
+use App\Models\Comprobante;
+use App\Models\DetalleVenta;
+use App\Models\Proveedor;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,28 +19,31 @@ class CompraController extends Controller
 
     public function generarPdf($id, Request $request)
     {
+        //Call to undefined relationship [proveedore] on model [App\Models\Compra].
+        
         $compra = Compra::with([
             'comprobante',
-            'proveedore.persona',
-            'productos' => fn($q) => $q->withPivot('cantidad', 'precio_compra', 'precio_venta')
+            'proveedor.persona',
+            'detalles.producto'
         ])->findOrFail($id);
-
-        // Formateo de fechas y números (mantén tu código actual)
 
         $pdf = Pdf::loadView('compra.pdf', compact('compra'))
             ->setPaper('a4', 'portrait');
 
-        $fileName = "COMPRA-{$compra->numero_comprobante}-{$compra->proveedore->persona->razon_social}.pdf";
+        $fileName = "COMPRA-{$compra->numero_comprobante}-{$compra->proveedor->persona->razon_social}.pdf";
 
         if ($request->has('print')) {
-            return $pdf->stream($fileName); // Cambiamos download por stream
+            return $pdf->stream($fileName);
         }
 
         return $pdf->download($fileName);
     }
 
-    function __construct()
+    protected $compraService;
+
+    function __construct(\App\Services\CompraService $compraService)
     {
+        $this->compraService = $compraService;
         $this->middleware('permission:ver-compra|crear-compra|mostrar-compra|eliminar-compra', ['only' => ['index']]);
         $this->middleware('permission:crear-compra', ['only' => ['create', 'store']]);
         $this->middleware('permission:mostrar-compra', ['only' => ['show']]);
@@ -47,12 +51,9 @@ class CompraController extends Controller
         $this->middleware('permission:eliminar-compra', ['only' => ['destroy']]);
     }
 
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $compras = Compra::with('comprobante', 'proveedore.persona')
+        $compras = Compra::with(['comprobante', 'proveedor.persona', 'user'])
             ->where('estado', 1)
             ->latest()
             ->get();
@@ -60,98 +61,72 @@ class CompraController extends Controller
         return view('compra.index', compact('compras'));
     }
 
-    
     public function create()
     {
-       
+        $proveedores = Proveedor::with('persona')->get();
+        $comprobantes = Comprobante::all();
+        $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        $productos = Producto::where('estado', 1)->get();
+        
+        return view('compra.create', compact('proveedores', 'comprobantes', 'almacenes', 'productos'));
     }
 
-    public function store(StoreCompraRequest $request)
+    public function store(Request $request)
     {
+        $request->validate([
+            'proveedor_id' => 'required|exists:proveedores,id',
+            'almacen_id' => 'required|exists:almacenes,id',
+            'comprobante_id' => 'required|exists:comprobantes,id',
+            'numero_comprobante' => 'required|max:20',
+            'arrayidproducto' => 'required|array',
+            'arraycantidad' => 'required|array',
+            'arraypreciocompra' => 'required|array',
+            'arrayprecioventa' => 'required|array',
+        ]);
+
         try {
             DB::beginTransaction();
 
-            // Crear la compra
-            $compraData = $request->validated();
-            $compraData['fecha_hora'] = now();
+            $compra = Compra::create([
+                'fecha_hora' => now(),
+                'numero_comprobante' => $request->numero_comprobante,
+                'total' => 0, // Se calculará abajo
+                'costo_transporte' => $request->costo_transporte ?? 0,
+                'nota_personal' => $request->nota_personal,
+                'estado_pago' => $request->estado_pago ?? 'pendiente',
+                'estado_entrega' => $request->estado_entrega ?? 'por_entregar',
+                'comprobante_id' => $request->comprobante_id,
+                'proveedor_id' => $request->proveedor_id,
+                'almacen_id' => $request->almacen_id,
+                'user_id' => auth()->id(),
+            ]);
 
-            $compra = Compra::create($compraData);
+            $total = 0;
+            foreach ($request->arrayidproducto as $index => $productoId) {
+                $cantidad = $request->arraycantidad[$index];
+                $precioCompra = $request->arraypreciocompra[$index];
+                $precioVenta = $request->arrayprecioventa[$index];
 
-            // Procesar productos
-            $this->processProductos($compra, $request);
-
-            DB::commit();
-
-            return redirect()->route('compras.index')
-                ->with('success', 'Compra registrada exitosamente');
-        } catch (Exception $e) {
-            DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Error al registrar la compra: ' . $e->getMessage());
-        }
-    }
-
-    protected function processProductos(Compra $compra, Request $request)
-    {
-        $productos = $request->get('arrayidproducto', []);
-        $cantidades = $request->get('arraycantidad', []);
-        $preciosCompra = $request->get('arraypreciocompra', []);
-        $preciosVenta = $request->get('arrayprecioventa', []);
-
-        // Validación de consistencia
-        if (
-            count($productos) !== count($cantidades) ||
-            count($productos) !== count($preciosCompra) ||
-            count($productos) !== count($preciosVenta)
-        ) {
-            throw new Exception('Datos de productos inconsistentes');
-        }
-
-        // Agrupar productos por ID para sumar cantidades
-        $productosAgrupados = [];
-        foreach ($productos as $index => $productoId) {
-            $cantidad = floatval($cantidades[$index]);
-            $precioCompra = floatval($preciosCompra[$index]);
-            $precioVenta = floatval($preciosVenta[$index]);
-
-            if (isset($productosAgrupados[$productoId])) {
-                $productosAgrupados[$productoId]['cantidad'] += $cantidad;
-                // Mantener el último precio ingresado
-                $productosAgrupados[$productoId]['precio_compra'] = $precioCompra;
-                $productosAgrupados[$productoId]['precio_venta'] = $precioVenta;
-            } else {
-                $productosAgrupados[$productoId] = [
+                $compra->detalles()->create([
+                    'producto_id' => $productoId,
                     'cantidad' => $cantidad,
                     'precio_compra' => $precioCompra,
-                    'precio_venta' => $precioVenta
-                ];
-            }
-        }
+                    'precio_venta' => $precioVenta,
+                ]);
 
-        // Procesar productos agrupados
-        foreach ($productosAgrupados as $productoId => $detalle) {
-            $producto = Producto::findOrFail($productoId);
-
-            if ($detalle['precio_venta'] < $detalle['precio_compra']) {
-                throw new Exception("El precio de venta no puede ser menor al precio de compra para: {$producto->nombre}");
+                $total += ($cantidad * $precioCompra);
             }
 
-            // Adjuntar producto a la compra
-            $compra->productos()->attach($productoId, [
-                'cantidad' => $detalle['cantidad'],
-                'precio_compra' => $detalle['precio_compra'],
-                'precio_venta' => $detalle['precio_venta']
-            ]);
+            $compra->update(['total' => $total]);
 
-            // Actualizar stock usando increment (seguro para decimales)
-            $producto->increment('stock', $detalle['cantidad']);
+            // Procesar stock
+            $this->compraService->procesarEntradaStock($compra);
 
-            // Actualizar precios actuales del producto
-            $producto->update([
-                'precio_compra' => $detalle['precio_compra'],
-                'precio_venta' => $detalle['precio_venta']
-            ]);
+            DB::commit();
+            return redirect()->route('compras.index')->with('success', 'Compra registrada exitosamente.');
+        } catch (Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Error al registrar: ' . $e->getMessage());
         }
     }
 
@@ -161,7 +136,8 @@ class CompraController extends Controller
     // En CompraController.php
     public function show(Compra $compra)
     {
-        // Verificar si es una petición AJAX
+        $compra->load(['comprobante', 'proveedor.persona', 'detalles.producto', 'almacen', 'user']);
+
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -172,212 +148,126 @@ class CompraController extends Controller
         return view('compra.show', compact('compra'));
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function edit(Compra $compra)
     {
-        try {
-            $compra = Compra::with([
-                'comprobante',
-                'proveedore.persona',
-                'productos' => fn($q) => $q->withPivot('cantidad', 'precio_compra', 'precio_venta')
-            ])->findOrFail($id);
+        $compra->load(['detalles.producto', 'proveedor.persona']);
+        
+        $productosInfo = [];
+        foreach ($compra->detalles as $detalle) {
+            $producto = $detalle->producto;
+            // Calculamos cuánto se ha vendido de este producto en total
+            //$vendido = \App\Models\DetalleVenta::where('producto_id', $producto->id)->sum('cantidad');
+            if($producto){
+                $vendido = DetalleVenta::where('producto_id', $producto->id)->sum('cantidad');
+            }else{
+                $vendido = 0;
+            }
+            
+            $productosInfo[$producto->id] = [
+                'vendido' => $vendido,
+                'minimo_permitido' => $vendido,
+                'cantidad_original' => $detalle->cantidad
+            ];
+        }
 
-            // Prepara información sobre productos vendidos
-            $productosInfo = [];
-            foreach ($compra->productos as $producto) {
-                $vendido = $producto->ventas()->sum('cantidad');
-                $productosInfo[$producto->id] = [
-                    'vendido' => $vendido,
-                    'minimo_permitido' => $vendido, // El mínimo permitido es lo ya vendido
-                    'cantidad_original' => $producto->pivot->cantidad
-                ];
+        $proveedores = Proveedor::with('persona')->get();
+        $comprobantes = Comprobante::all();
+        $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        $productos = Producto::where('estado', 1)->get();
+
+        return view('compra.edit', compact('compra', 'proveedores', 'comprobantes', 'almacenes', 'productos', 'productosInfo'));
+    }
+
+    public function update(Request $request, Compra $compra)
+    {
+        $request->validate([
+            'proveedor_id' => 'required|exists:proveedores,id',
+            'almacen_id' => 'required|exists:almacenes,id',
+            'comprobante_id' => 'required|exists:comprobantes,id',
+            'numero_comprobante' => 'required|max:20',
+            'arrayidproducto' => 'required|array',
+            'arraycantidad' => 'required|array',
+            'arraypreciocompra' => 'required|array',
+            'arrayprecioventa' => 'required|array',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Revertir stock actual antes de borrar detalles viejos
+            $this->compraService->revertirStock($compra);
+
+            // 2. Borrar detalles viejos
+            $compra->detalles()->delete();
+
+            // 3. Actualizar datos básicos
+            $compra->update([
+                'fecha_hora' => $request->fecha_hora ?? $compra->fecha_hora,
+                'numero_comprobante' => $request->numero_comprobante,
+                'total' => 0,
+                'costo_transporte' => $request->costo_transporte ?? 0,
+                'nota_personal' => $request->nota_personal,
+                'estado_pago' => $request->estado_pago ?? $compra->estado_pago,
+                'estado_entrega' => $request->estado_entrega ?? $compra->estado_entrega,
+                'comprobante_id' => $request->comprobante_id,
+                'proveedor_id' => $request->proveedor_id,
+                'almacen_id' => $request->almacen_id,
+            ]);
+
+            // 4. Crear nuevos detalles
+            $total = 0;
+            foreach ($request->arrayidproducto as $index => $productoId) {
+                $cantidad = $request->arraycantidad[$index];
+                $precioCompra = $request->arraypreciocompra[$index];
+                $precioVenta = $request->arrayprecioventa[$index];
+
+                $compra->detalles()->create([
+                    'producto_id' => $productoId,
+                    'cantidad' => $cantidad,
+                    'precio_compra' => $precioCompra,
+                    'precio_venta' => $precioVenta,
+                ]);
+
+                $total += ($cantidad * $precioCompra);
             }
 
-            return view('compra.edit', [
-                'compra' => $compra,
-                'proveedores' => Proveedore::with('persona')
-                    ->whereHas('persona', fn($q) => $q->where('estado', 1))
-                    ->get(),
-                'comprobantes' => Comprobante::all(),
-                'productos' => Producto::where('estado', 1)->get(),
-                'productosInfo' => $productosInfo
-            ]);
+            $compra->update(['total' => $total]);
+
+            // 5. Validar que el nuevo stock no sea negativo (si hubo reducciones)
+            // Aunque al ser compra usualmente aumenta stock, si se reduce y ya se vendió podría fallar.
+            $this->compraService->validarReversion($compra); // Aquí se usa para validar que el stock final sea coherente
+
+            // 6. Procesar entrada de stock nuevo
+            $this->compraService->procesarEntradaStock($compra);
+
+            DB::commit();
+            return redirect()->route('compras.index')->with('success', 'Compra actualizada exitosamente.');
         } catch (Exception $e) {
-            return redirect()->route('compras.index')
-                ->with('error', $e->getMessage());
+            DB::rollBack();
+            return back()->with('error', 'Error al actualizar: ' . $e->getMessage());
         }
     }
 
-    public function update(Request $request, string $id)
+    public function destroy(Compra $compra)
     {
         try {
             DB::beginTransaction();
 
-            $compra = Compra::with('productos')->findOrFail($id);
-            $productosInfo = [];
-            $nuevosProductos = [];
+            // Validar si se puede revertir
+            $this->compraService->validarReversion($compra);
 
-            // 1. Validar productos vendidos y calcular máximos permitidos
-            foreach ($compra->productos as $producto) {
-                $vendido = $producto->ventas()->sum('cantidad');
-                $productosInfo[$producto->id] = [
-                    'vendido' => $vendido,
-                    'cantidad_original' => $producto->pivot->cantidad,
-                    'minimo_permitido' => $vendido
-                ];
-            }
+            // Revertir stock
+            $this->compraService->revertirStock($compra);
 
-            // 2. Validar y preparar nuevos datos - Agrupar por producto ID
-            $productosAgrupados = [];
-            foreach ($request->arrayidproducto as $index => $productoId) {
-                $producto = Producto::findOrFail($productoId);
-                $nuevaCantidad = floatval($request->arraycantidad[$index]);
-                $precioCompra = floatval($request->arraypreciocompra[$index]);
-                $precioVenta = floatval($request->arrayprecioventa[$index]);
-
-                // Validaciones
-                if ($precioVenta < $precioCompra) {
-                    throw new Exception("Precio de venta menor al de compra para {$producto->nombre}");
-                }
-
-                // Agrupar por producto ID - si ya existe, sumar cantidades
-                if (isset($productosAgrupados[$productoId])) {
-                    $productosAgrupados[$productoId]['cantidad'] += $nuevaCantidad;
-                    // Mantener el último precio ingresado (o puedes promediarlos si prefieres)
-                    $productosAgrupados[$productoId]['precio_compra'] = $precioCompra;
-                    $productosAgrupados[$productoId]['precio_venta'] = $precioVenta;
-                } else {
-                    $productosAgrupados[$productoId] = [
-                        'cantidad' => $nuevaCantidad,
-                        'precio_compra' => $precioCompra,
-                        'precio_venta' => $precioVenta
-                    ];
-                }
-
-                // Validación de cantidad mínima para productos existentes
-                if (isset($productosInfo[$productoId])) {
-                    if ($productosAgrupados[$productoId]['cantidad'] < $productosInfo[$productoId]['minimo_permitido']) {
-                        throw new Exception(
-                            "No puede reducir la cantidad de {$producto->nombre} a {$productosAgrupados[$productoId]['cantidad']}. " .
-                                "Mínimo permitido: {$productosInfo[$productoId]['minimo_permitido']} " .
-                                "(ya vendido: {$productosInfo[$productoId]['vendido']})"
-                        );
-                    }
-                }
-            }
-
-            // 3. Revertir solo el stock NO vendido de los productos originales
-            foreach ($compra->productos as $producto) {
-                $vendido = $productosInfo[$producto->id]['vendido'];
-                $diferencia = $producto->pivot->cantidad - $vendido;
-
-                if ($diferencia > 0) {
-                    $producto->decrement('stock', $diferencia);
-                }
-            }
-
-            // 4. Actualizar la compra con los productos agrupados
-            $compra->productos()->detach();
-            $compra->productos()->attach($productosAgrupados);
-
-            // Calcular nuevo total
-            $total = 0;
-            foreach ($productosAgrupados as $productoId => $detalle) {
-                $total += $detalle['cantidad'] * $detalle['precio_compra'];
-            }
-
-            $compra->update([
-                'numero_comprobante' => $request->numero_comprobante,
-                'fecha_hora' => $request->fecha_hora ?? now(),
-                'total' => $total,
-                'comprobante_id' => $request->comprobante_id,
-                'proveedore_id' => $request->proveedore_id
-            ]);
-
-            // 5. Aplicar nuevo stock (solo lo nuevo no vendido)
-            foreach ($productosAgrupados as $productoId => $detalle) {
-                $producto = Producto::find($productoId);
-                $vendido = $productosInfo[$productoId]['vendido'] ?? 0;
-                $diferencia = $detalle['cantidad'] - $vendido;
-
-                if ($diferencia > 0) {
-                    $producto->increment('stock', $diferencia);
-                }
-
-                // Actualizar precios del producto (solo si cambió)
-                $producto->update([
-                    'precio_compra' => $detalle['precio_compra'],
-                    'precio_venta' => $detalle['precio_venta']
-                ]);
-            }
+            // Borrar detalles y compra
+            $compra->detalles()->delete();
+            $compra->delete();
 
             DB::commit();
-            return redirect()->route('compras.index')
-                ->with('success', 'Compra actualizada exitosamente');
+            return redirect()->route('compras.index')->with('success', 'Compra eliminada y stock revertido.');
         } catch (Exception $e) {
             DB::rollBack();
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Error al actualizar: ' . $e->getMessage());
-        }
-    }
-    public function destroy(string $id)
-    {
-        try {
-            DB::transaction(function () use ($id) {
-                $compra = Compra::with(['productos' => function ($query) {
-                    $query->lockForUpdate(); // Bloquea los productos para evitar race conditions
-                }])->findOrFail($id);
-
-                // Verificar primero TODOS los productos antes de hacer cualquier cambio
-                foreach ($compra->productos as $producto) {
-                    $vendidoTotal = $producto->ventas()->sum('cantidad');
-                    $cantidadComprada = floatval($producto->pivot->cantidad);
-                    $stockActual = floatval($producto->stock);
-
-                    // Si se vendió más de lo que se quiere revertir
-                    if ($vendidoTotal > 0) {
-                        $stockDespuesDeRevertir = $stockActual - $cantidadComprada;
-
-                        if ($stockDespuesDeRevertir < $vendidoTotal) {
-                            throw new Exception(
-                                "No se puede eliminar: El producto '{$producto->nombre}' " .
-                                    "tiene {$vendidoTotal} unidades vendidas. " .
-                                    "Si se revierten {$cantidadComprada} unidades, " .
-                                    "el stock quedaría en {$stockDespuesDeRevertir} " .
-                                    "(insuficiente para las ventas existentes)."
-                            );
-                        }
-                    }
-
-                    // Verificar que no quede stock negativo
-                    if ($stockActual < $cantidadComprada) {
-                        throw new Exception(
-                            "Stock insuficiente para revertir '{$producto->nombre}'. " .
-                                "Stock actual: {$stockActual}, se necesita revertir: {$cantidadComprada}"
-                        );
-                    }
-                }
-
-                // Si todas las validaciones pasan, proceder con la reversión
-                foreach ($compra->productos as $producto) {
-                    $producto->decrement('stock', floatval($producto->pivot->cantidad));
-                }
-
-                $compra->productos()->detach();
-                $compra->delete();
-            });
-
-            return redirect()->route('compras.index')
-                ->with('success', 'Compra eliminada y stock revertido exitosamente');
-        } catch (\Illuminate\Database\QueryException $e) {
-            return redirect()->route('compras.index')
-                ->with('error', 'Error de base de datos: ' . $e->getMessage());
-        } catch (Exception $e) {
-            return redirect()->route('compras.index')
-                ->with('error', 'No se pudo eliminar: ' . $e->getMessage());
+            return redirect()->route('compras.index')->with('error', 'No se pudo eliminar: ' . $e->getMessage());
         }
     }
 }
