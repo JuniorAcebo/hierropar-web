@@ -8,6 +8,7 @@ use App\Models\Almacen;
 use App\Models\InventarioAlmacen;
 use App\Models\Producto;
 use App\Models\Traslado;
+use App\Traits\FilterByAlmacen;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class TrasladoController extends Controller
 {
+    use FilterByAlmacen;
+
     function __construct()
     {
         $this->middleware('permission:ver-traslado', ['only' => ['index']]);
@@ -41,6 +44,9 @@ class TrasladoController extends Controller
             'user',
             'detalles.producto'
         ]);
+
+        // Filtrar por almacén del usuario
+        $query = $this->filterByUserAlmacen($query, 'origen_almacen_id');
 
         if ($busqueda) {
             $query->where(function($q) use ($busqueda) {
@@ -73,13 +79,23 @@ class TrasladoController extends Controller
 
     public function create()
     {
-        $almacenes = Almacen::all();
+        $user = auth()->user();
+        
+        // Si es trabajador (tiene almacén), mostrar solo su almacén como origen
+        if ($user->almacen_id) {
+            $almacenes = Almacen::where('id', $user->almacen_id)->get();
+            $almacenesDestino = $this->getDestinationAlmacens();
+        } else {
+            // Si es admin, mostrar todos los almacenes
+            $almacenes = Almacen::all();
+            $almacenesDestino = Almacen::where('estado', true)->get();
+        }
 
         $productos = Producto::with('inventarios')
             ->where('estado', 1)
             ->get();
 
-        return view('traslado.create', compact('almacenes', 'productos'));
+        return view('traslado.create', compact('almacenes', 'almacenesDestino', 'productos'));
     }
 
 
@@ -89,13 +105,25 @@ class TrasladoController extends Controller
         DB::beginTransaction();
 
         try {
+            $user = auth()->user();
+
+            // Validar que si es trabajador, solo puede crear desde su almacén
+            if ($user->almacen_id && $request->origen_almacen_id != $user->almacen_id) {
+                return back()->withErrors(['error' => 'No puede crear traslados desde otros almacenes.'])->withInput();
+            }
+
+            // Validar que no envíe a su mismo almacén
+            if ($request->origen_almacen_id == $request->destino_almacen_id) {
+                return back()->withErrors(['error' => 'El almacén de origen y destino no pueden ser iguales.'])->withInput();
+            }
+
             $traslado = \App\Models\Traslado::create([
                 'origen_almacen_id' => $request->origen_almacen_id,
                 'destino_almacen_id' => $request->destino_almacen_id,
                 'fecha_hora' => $request->fecha_hora,
                 'costo_envio' => $request->costo_envio,
-                'user_id' => auth()->id(), // Usuario detectado automáticamente
-                'estado' => 1, // Pendiente por defecto
+                'user_id' => auth()->id(),
+                'estado' => 1,
             ]);
 
             foreach ($request->arrayidproducto as $index => $productoId) {
@@ -179,6 +207,14 @@ class TrasladoController extends Controller
      */
     public function edit(Traslado $traslado)
     {
+        $user = auth()->user();
+
+        // Validar que el usuario pueda editar este traslado
+        if (!$this->canAccessAlmacen($traslado->origen_almacen_id)) {
+            return redirect()->route('traslados.index')
+                ->with('error', 'No tienes permiso para editar este traslado');
+        }
+
         // Solo permitir editar si está en estado Pendiente (1)
         if ($traslado->estado != 1) {
             return redirect()->route('traslados.index')
@@ -186,12 +222,21 @@ class TrasladoController extends Controller
         }
 
         $traslado->load(['detalles.producto.inventarios']);
-        $almacenes = Almacen::all();
+        
+        // Si es trabajador, mostrar solo su almacén como origen
+        if ($user->almacen_id) {
+            $almacenes = Almacen::where('id', $user->almacen_id)->get();
+            $almacenesDestino = $this->getDestinationAlmacens();
+        } else {
+            $almacenes = Almacen::all();
+            $almacenesDestino = Almacen::where('estado', true)->get();
+        }
+        
         $productos = Producto::with('inventarios')
             ->where('estado', 1)
             ->get();
 
-        return view('traslado.edit', compact('traslado', 'almacenes', 'productos'));
+        return view('traslado.edit', compact('traslado', 'almacenes', 'almacenesDestino', 'productos'));
     }
 
     /**
@@ -199,6 +244,12 @@ class TrasladoController extends Controller
      */
     public function update(UpdateTrasladoRequest $request, Traslado $traslado)
     {
+        // Validar que el usuario pueda editar este traslado
+        if (!$this->canAccessAlmacen($traslado->origen_almacen_id)) {
+            return redirect()->route('traslados.index')
+                ->with('error', 'No tienes permiso para editar este traslado');
+        }
+
         // Solo permitir editar si está en estado Pendiente (1)
         if ($traslado->estado != 1) {
             return redirect()->route('traslados.index')
@@ -238,6 +289,11 @@ class TrasladoController extends Controller
 
     public function destroy(Traslado $traslado)
     {
+        // Validar que el usuario pueda eliminar este traslado
+        if (!$this->canAccessAlmacen($traslado->origen_almacen_id)) {
+            return redirect()->route('traslados.index')
+                ->with('error', 'No tienes permiso para eliminar este traslado');
+        }
 
         DB::beginTransaction();
 

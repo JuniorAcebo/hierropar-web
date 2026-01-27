@@ -179,6 +179,7 @@
                     <tr>
                         <th>Nombre</th>
                         <th>Email</th>
+                        <th>Almacén</th>
                         <th>Rol</th>
                         <th>Acciones</th>
                     </tr>
@@ -191,6 +192,13 @@
                         </td>
                         <td>
                             {{$item->email}}
+                        </td>
+                        <td>
+                            @if($item->almacen)
+                                <span class="badge bg-info">{{ $item->almacen->nombre }}</span>
+                            @else
+                                <span class="badge bg-secondary">Sin asignar</span>
+                            @endif
                         </td>
                         <td>
                             @php $role = $item->getRoleNames()->first(); @endphp

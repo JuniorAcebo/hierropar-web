@@ -46,7 +46,7 @@
                     <label for="destino_almacen_id" class="form-label">Almacén Destino:</label>
                     <select name="destino_almacen_id" id="destino_almacen_id" class="form-control" required>
                         <option value="">Seleccione almacén destino</option>
-                        @foreach ($almacenes as $almacen)
+                        @foreach ($almacenesDestino as $almacen)
                         <option value="{{ $almacen->id }}" {{ old('destino_almacen_id', $traslado->destino_almacen_id) == $almacen->id ? 'selected' : '' }}>
                             {{ $almacen->nombre }}
                         </option>

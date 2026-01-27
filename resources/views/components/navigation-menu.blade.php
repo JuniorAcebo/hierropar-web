@@ -159,7 +159,7 @@
                     </a>
                 @endcan
 
-                @hasrole('administrador')
+                @hasrole('ADMINISTRADOR')
                     <div class="sb-sidenav-menu-heading">Administración</div>
                 @endhasrole
                 @can('ver-user')
