@@ -12,8 +12,8 @@ return new class extends Migration
         Schema::create('traslados', function (Blueprint $table) {
             $table->id();
             $table->dateTime('fecha_hora');
-            $table->string('origen',255);
-            $table->string('destino',255);
+            $table->foreignId('origen_almacen_id')->nullable()->constrained('almacenes')->cascadeOnDelete();
+            $table->foreignId('destino_almacen_id')->nullable()->constrained('almacenes')->cascadeOnDelete();
             $table->decimal('costo_envio', 10, 2);
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->tinyInteger('estado')->default(1);

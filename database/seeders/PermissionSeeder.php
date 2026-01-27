@@ -43,6 +43,8 @@ class PermissionSeeder extends Seeder
             'ver-traslado',
             'crear-traslado',
             'editar-traslado',
+            'eliminar-traslado',
+            'update-estadoTraslado',
 
             //Cliente
             'ver-cliente',
@@ -67,7 +69,7 @@ class PermissionSeeder extends Seeder
             'ver-producto',
             'crear-producto',
             'editar-producto',
-            'update-estado',
+            'update-estado-producto',
             'ajustar-stock',
             'eliminar-producto',
             'ver-historial-stock',

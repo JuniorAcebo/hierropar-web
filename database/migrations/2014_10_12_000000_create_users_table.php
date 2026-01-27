@@ -13,7 +13,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->tinyInteger('sucursal_id'); //1=Principal, 2=Sucursal1, 0=Controlar Todas las sucursales
+            $table->foreignId('almacen_id')->nullable()->constrained('almacenes')->onDelete('set null');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

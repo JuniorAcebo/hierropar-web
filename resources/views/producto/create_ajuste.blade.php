@@ -35,6 +35,14 @@
                 <div class="card-header bg-dark text-white p-3" style="border-radius: 15px 15px 0 0;">
                     <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Registrar Nuevo Ajuste de Stock</h5>
                 </div>
+
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                @endif
+                
                 <div class="card-body p-4">
                     <form action="{{ route('productos.storeAjuste') }}" method="POST">
                         @csrf

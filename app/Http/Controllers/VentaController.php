@@ -8,6 +8,7 @@ use App\Models\Producto;
 use App\Models\Venta;
 use App\Models\Comprobante;
 use App\Models\InventarioAlmacen;
+use App\Traits\FilterByAlmacen;
 use Exception;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -16,6 +17,7 @@ use App\Services\VentaService;
 
 class VentaController extends Controller
 {
+    use FilterByAlmacen;
     protected $ventaService;
 
     function __construct(VentaService $ventaService)

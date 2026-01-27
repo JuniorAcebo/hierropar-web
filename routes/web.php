@@ -21,15 +21,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/',[homeController::class,'index'])->name('panel');
 
-    Route::get('productos/historial-ajustes', [ProductoController::class, 'historialAjustes'])
-    ->name('productos.historialAjustes');
-
-    Route::get('productos/crear-ajuste', [ProductoController::class, 'createAjuste'])
-    ->name('productos.createAjuste');
-
-    Route::post('productos/store-ajuste', [ProductoController::class, 'storeAjuste'])
-    ->name('productos.storeAjuste');
-
+    Route::get('productos/historial-ajustes', [ProductoController::class, 'historialAjustes'])->name('productos.historialAjustes');
+    Route::get('productos/crear-ajuste', [ProductoController::class, 'createAjuste'])->name('productos.createAjuste');
+    Route::post('productos/store-ajuste', [ProductoController::class, 'storeAjuste'])->name('productos.storeAjuste');
     Route::get('/ventas/check-stock', [VentaController::class, 'checkStock'])->name('ventas.check-stock');
 
 Route::resources([
@@ -52,35 +46,29 @@ Route::resources([
 
     Route::resource('tipounidades', TipoUnidadController::class)->parameters(['tipounidades' => 'tipounidad']);
 
-    Route::patch('/almacenes/{almacen}/estado', [AlmacenController::class, 'updateEstado'])
-    ->name('almacenes.updateEstado');
+    Route::patch('productos/{producto}/estado', [ProductoController::class, 'updateEstado'])->name('productos.updateEstado');
+    Route::get('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'ajusteCantidad'])->name('productos.ajusteCantidad');
+    Route::post('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'updateCantidad'])->name('productos.updateCantidad');
+    Route::get('/productos/check-stock', [ProductoController::class, 'checkStock'])->name('productos.checkStock');
 
-    Route::patch('productos/{producto}/estado', [ProductoController::class, 'updateEstado'])
-    ->name('productos.updateEstado');
+    Route::patch('traslados/{traslado}/update-estado', [TrasladoController::class, 'toggleEstado'])->name('traslados.toggleEstado');
+    Route::get('/traslados/exportar/vista', [TrasladoController::class, 'exportar'])->name('traslados.exportar');
+    Route::post('/traslados/exportar/excel', [TrasladoController::class, 'exportarExcel'])->name('traslados.exportar-excel');
+    Route::post('/traslados/exportar/pdf', [TrasladoController::class, 'exportarPdf'])->name('traslados.exportar-pdf');
+    Route::patch('/almacenes/{almacen}/estado', [AlmacenController::class, 'updateEstado'])->name('almacenes.updateEstado');
 
-    Route::get('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'ajusteCantidad'])
-    ->name('productos.ajusteCantidad');
+    Route::get('/compras/pdf/{id}', [compraController::class, 'generarPdf'])->name('compras.pdf');
+    Route::get('/ventas/pdf/{id}', [ventaController::class, 'generarPdf'])->name('ventas.pdf');
+    Route::get('/login',[loginController::class,'index'])->name('login');
+    Route::post('/login',[loginController::class,'login']);
+    Route::get('/logout',[logoutController::class,'logout'])->name('logout');
 
-    Route::post('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'updateCantidad'])
-    ->name('productos.updateCantidad');
-
-    Route::get('/productos/check-stock', [ProductoController::class, 'checkStock'])
-    ->name('productos.checkStock');
-
-
-
-Route::get('/compras/pdf/{id}', [compraController::class, 'generarPdf'])->name('compras.pdf');
-Route::get('/ventas/pdf/{id}', [ventaController::class, 'generarPdf'])->name('ventas.pdf');
-Route::get('/login',[loginController::class,'index'])->name('login');
-Route::post('/login',[loginController::class,'login']);
-Route::get('/logout',[logoutController::class,'logout'])->name('logout');
-
-Route::get('/401', function () {
-    return view('pages.401');
-});
-Route::get('/404', function () {
-    return view('pages.404');
-});
-Route::get('/500', function () {
-    return view('pages.500');
-});
+    Route::get('/401', function () {
+        return view('pages.401');
+    });
+    Route::get('/404', function () {
+        return view('pages.404');
+    });
+    Route::get('/500', function () {
+        return view('pages.500');
+    });

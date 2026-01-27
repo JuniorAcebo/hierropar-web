@@ -60,6 +60,7 @@
 @endpush
 
 @section('content')
+@include('layouts.partials.alert')
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8 col-lg-6">
@@ -68,8 +69,15 @@
                     <h3 class="mb-0"><i class="fas fa-boxes me-2"></i>Ajuste de Cantidad</h3>
                     <p class="mb-0 mt-2 opacity-75">Producto: {{ $producto->nombre }}</p>
                 </div>
+
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        {{ session('error') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                    </div>
+                @endif
+
                 <div class="card-body p-4">
-                    @include('layouts.partials.alert')
 
                     <form action="{{ route('productos.updateCantidad', $producto) }}" method="POST">
                         @csrf
