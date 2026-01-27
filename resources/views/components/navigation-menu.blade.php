@@ -33,9 +33,8 @@
                         style="padding: 0.6rem 0.8rem; margin: 0.1rem 0.3rem;">
                         <div class="sb-nav-link-icon" style="font-size: 0.9rem;"><i class="fa-brands fa-shopify"></i></div>
                         Productos
-                        <div class="sb-sidenav-collapse-arrow" style="font-size: 0.8rem;"><i
-                                class="fas fa-chevron-down"></i></div>
-                        <span class="sb-nav-link-badge" style="font-size: 0.6rem; padding: 0.1rem 0.3rem;">Inv</span>
+                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-chevron-down"></i></div>
+                        
                     </a>
                     <div class="collapse" id="collapseProductos" aria-labelledby="headingOne"
                         data-bs-parent="#sidenavAccordion">
@@ -111,6 +110,9 @@
                             @endcan
                             @can('crear-traslado')
                                 <a class="nav-link" href="{{ route('traslados.create') }}"><i class="fa-solid fa-plus me-1"></i>Crear</a>
+                            @endcan
+                            @can('ver-traslado')
+                                <a class="nav-link" href="{{ route('traslados.exportar') }}"><i class="fa-solid fa-download me-1"></i>Exportar</a>
                             @endcan
                         </nav>
                     </div>

@@ -5,7 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreAlmacenRequest;
 use App\Http\Requests\UpdateAlmacenRequest;
 use App\Models\Almacen;
+use App\Models\Producto;
+use App\Models\InventarioAlmacen;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AlmacenController extends Controller
 {
@@ -30,12 +33,34 @@ class AlmacenController extends Controller
 
     public function store(StoreAlmacenRequest $request)
     {
+        DB::beginTransaction();
 
-        Almacen::create($request->validated());
+        try {
+            // Crear el almacén
+            $almacen = Almacen::create($request->validated());
 
-        return redirect()
-            ->route('almacenes.index')
-            ->with('success', 'Almacén registrado correctamente');
+            // Obtener todos los productos activos
+            $productos = Producto::where('estado', 1)->get();
+
+            // Crear registros en inventario_almacen para cada producto con stock 0
+            foreach ($productos as $producto) {
+                InventarioAlmacen::create([
+                    'almacen_id' => $almacen->id,
+                    'producto_id' => $producto->id,
+                    'stock' => 0,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()
+                ->route('almacenes.index')
+                ->with('success', 'Almacén registrado correctamente con todos los productos integrados');
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return back()->withErrors(['error' => 'Error al crear el almacén: ' . $e->getMessage()])->withInput();
+        }
     }
 
     public function edit(Almacen $almacen)

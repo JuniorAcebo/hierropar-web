@@ -6,6 +6,7 @@ use App\Http\Requests\StoreProductoRequest;
 use App\Http\Requests\UpdateProductoRequest;
 use App\Models\Almacen;
 use App\Models\Categoria;
+use App\Models\InventarioAlmacen;
 use App\Models\Marca;
 use App\Models\TipoUnidad;
 use App\Models\Producto;
@@ -27,7 +28,7 @@ class ProductoController extends Controller
         $this->middleware('permission:crear-producto', ['only' => ['create', 'store']]);
         $this->middleware('permission:editar-producto', ['only' => ['edit', 'update']]); 
         $this->middleware('permission:eliminar-producto', ['only' => ['destroy']]);
-        $this->middleware('permission:update-estado', ['only' => ['updateEstado']]);
+        $this->middleware('permission:update-estado-producto', ['only' => ['updateEstado']]);
         $this->middleware('permission:ajustar-stock', ['only' => ['ajusteCantidad', 'updateCantidad']]);
     }
     
@@ -266,7 +267,7 @@ class ProductoController extends Controller
             'almacen_id' => 'required|exists:almacenes,id',
         ]);
 
-        $inventario = \App\Models\InventarioAlmacen::where('producto_id', $request->producto_id)
+        $inventario = InventarioAlmacen::where('producto_id', $request->producto_id)
             ->where('almacen_id', $request->almacen_id)
             ->first();
 

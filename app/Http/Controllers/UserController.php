@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
+use App\Models\Almacen;
 use Exception;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -35,7 +37,8 @@ class UserController extends Controller
     public function create()
     {
         $roles = Role::all();
-        return view('user.create', compact('roles'));
+        $almacenes = Almacen::where('estado', true)->get();
+        return view('user.create', compact('roles', 'almacenes'));
     }
 
     /**
@@ -46,23 +49,23 @@ class UserController extends Controller
         try {
             DB::beginTransaction();
 
-            //Encriptar contraseña
-            $fieldHash = Hash::make($request->password);
-            //Modificar el valor de password en nuestro request
-            $request->merge(['password' => $fieldHash]);
-
+            //Preparar datos del usuario
+            $userData = $request->validated();
+            $userData['password'] = Hash::make($userData['password']);
+            
             //Crear usuario
-            $user = User::create($request->all());
+            $user = User::create($userData);
 
-            //Asignar su rol
-            $user->assignRole($request->role);
+            //Asignar su rol (obtenido directamente del request)
+            $user->assignRole($request->input('role'));
 
             DB::commit();
+            return redirect()->route('users.index')->with('success', 'Usuario registrado correctamente');
         } catch (Exception $e) {
             DB::rollBack();
+            Log::error('Error al crear usuario: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Error al registrar usuario: ' . $e->getMessage());
         }
-
-        return redirect()->route('users.index')->with('success', 'usuario registrado');
     }
 
     /**
@@ -79,7 +82,8 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $roles = Role::all();
-        return view('user.edit', compact('user', 'roles'));
+        $almacenes = Almacen::where('estado', true)->get();
+        return view('user.edit', compact('user', 'roles', 'almacenes'));
     }
 
     /**
@@ -90,25 +94,27 @@ class UserController extends Controller
         try {
             DB::beginTransaction();
 
-            /*Comprobar el password y aplicar el Hash*/
-            if (empty($request->password)) {
-                $request = Arr::except($request, array('password'));
+            $userData = $request->validated();
+            
+            //Manejar password
+            if (!empty($userData['password'])) {
+                $userData['password'] = Hash::make($userData['password']);
             } else {
-                $fieldHash = Hash::make($request->password);
-                $request->merge(['password' => $fieldHash]);
+                unset($userData['password']);
             }
 
-            $user->update($request->all());
+            $user->update($userData);
 
-            /**Actualizar rol */
-            $user->syncRoles([$request->role]);
+            //Actualizar rol (obtenido directamente del request)
+            $user->syncRoles([$request->input('role')]);
 
             DB::commit();
+            return redirect()->route('users.index')->with('success', 'Usuario actualizado correctamente');
         } catch (Exception $e) {
             DB::rollBack();
+            Log::error('Error al actualizar usuario: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Error al actualizar usuario: ' . $e->getMessage());
         }
-
-        return redirect()->route('users.index')->with('success','Usuario editado');
     }
 
     /**

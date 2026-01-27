@@ -22,7 +22,6 @@ class StoreTrasladoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'fecha_hora' => 'required|date_format:Y-m-d H:i',
             'origen_almacen_id' => 'nullable|exists:almacenes,id',
             'destino_almacen_id' => 'nullable|exists:almacenes,id',
             'costo_envio' => 'required|numeric|min:0',

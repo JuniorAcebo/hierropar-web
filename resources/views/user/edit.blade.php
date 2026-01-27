@@ -254,9 +254,9 @@
 
                 <!---Confirm_Password---->
                 <div class="row mb-4">
-                    <label for="password_confirm" class="col-lg-2 col-form-label">Confirmar:</label>
+                    <label for="password_confirmation" class="col-lg-2 col-form-label">Confirmar:</label>
                     <div class="col-lg-4">
-                        <input type="password" name="password_confirm" id="password_confirm" class="form-control">
+                        <input type="password" name="password_confirmation" id="password_confirmation" class="form-control">
                     </div>
                     <div class="col-lg-4">
                         <div class="form-text">
@@ -264,7 +264,7 @@
                         </div>
                     </div>
                     <div class="col-lg-2">
-                        @error('password_confirm')
+                        @error('password_confirmation')
                         <small class="text-danger">{{'*'.$message}}</small>
                         @enderror
                     </div>
@@ -296,6 +296,31 @@
                     </div>
                 </div>
 
+                <!---Almacén---->
+                <div class="row mb-4" id="almacen_row">
+                    <label for="almacen_id" class="col-lg-2 col-form-label">Almacén:</label>
+                    <div class="col-lg-4">
+                        <select name="almacen_id" id="almacen_id" class="form-select">
+                            <option value="">Sin almacén asignado</option>
+                            @foreach ($almacenes as $almacen)
+                                <option value="{{ $almacen->id }}" @selected(old('almacen_id', $user->almacen_id) == $almacen->id)>
+                                    {{ $almacen->nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="form-text">
+                            Seleccione el almacén donde trabaja (opcional para administrador).
+                        </div>
+                    </div>
+                    <div class="col-lg-2">
+                        @error('almacen_id')
+                        <small class="text-danger">{{'*'.$message}}</small>
+                        @enderror
+                    </div>
+                </div>
+
             </div>
             <div class="card-footer text-center">
                 <button type="submit" class="btn btn-primary">Actualizar</button>
@@ -306,5 +331,25 @@
 @endsection
 
 @push('js')
+<script>
+    const roleSelect = document.getElementById('role');
+    const almacenRow = document.getElementById('almacen_row');
+    const almacenSelect = document.getElementById('almacen_id');
+    const adminRoles = ['Super Admin', 'Administrador', 'Admin'];
 
+    function updateAlmacenField() {
+        const selectedRole = roleSelect.value;
+        const isAdmin = adminRoles.some(role => selectedRole.toLowerCase().includes(role.toLowerCase()));
+        
+        if (isAdmin) {
+            almacenRow.style.display = 'none';
+            almacenSelect.value = '';
+        } else {
+            almacenRow.style.display = 'flex';
+        }
+    }
+
+    roleSelect.addEventListener('change', updateAlmacenField);
+    document.addEventListener('DOMContentLoaded', updateAlmacenField);
+</script>
 @endpush

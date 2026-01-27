@@ -15,10 +15,15 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
-        'name', 'email', 'password', 'sucursal_id'
+        'name', 'email', 'password', 'almacen_id'
     ];
 
     protected $hidden = ['password', 'remember_token'];
+
+    public function almacen()
+    {
+        return $this->belongsTo(Almacen::class);
+    }
 
     public function compras()
     {

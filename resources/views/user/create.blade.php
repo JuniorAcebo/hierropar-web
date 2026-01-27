@@ -277,16 +277,16 @@
 
                     <!-- Confirm Password -->
                     <div class="form-row">
-                        <label for="password_confirm" class="form-label">Confirmar:</label>
+                        <label for="password_confirmation" class="form-label">Confirmar:</label>
                         <div class="form-input-group">
-                            <input type="password" name="password_confirm" id="password_confirm"
-                                aria-labelledby="passwordConfirmHelpBlock">
+                            <input type="password" name="password_confirmation" id="password_confirmation"
+                                aria-labelledby="passwordConfirmationHelpBlock">
                         </div>
-                        <div class="form-help-text" id="passwordConfirmHelpBlock">
+                        <div class="form-help-text" id="passwordConfirmationHelpBlock">
                             Vuelva a escribir su contraseña.
                         </div>
                         <div class="form-error-text">
-                            @error('password_confirm')
+                            @error('password_confirmation')
                                 <small>{{ '*' . $message }}</small>
                             @enderror
                         </div>
@@ -314,6 +314,29 @@
                         </div>
                     </div>
 
+                    <!-- Almacén -->
+                    <div class="form-row" id="almacen_row" style="display: none;">
+                        <label for="almacen_id" class="form-label">Almacén:</label>
+                        <div class="form-input-group">
+                            <select name="almacen_id" id="almacen_id" aria-labelledby="almacenHelpBlock">
+                                <option value="" selected>Sin almacén asignado</option>
+                                @foreach ($almacenes as $almacen)
+                                    <option value="{{ $almacen->id }}" @selected(old('almacen_id') == $almacen->id)>
+                                        {{ $almacen->nombre }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="form-help-text" id="almacenHelpBlock">
+                            Seleccione el almacén donde trabaja (opcional para administrador).
+                        </div>
+                        <div class="form-error-text">
+                            @error('almacen_id')
+                                <small>{{ '*' . $message }}</small>
+                            @enderror
+                        </div>
+                    </div>
+
                 </div>
                 <div class="card-footer">
                     <button type="submit" class="btn-primary">Guardar</button>
@@ -324,4 +347,29 @@
 @endsection
 
 @push('js')
+<script>
+    const roleSelect = document.getElementById('role');
+    const almacenRow = document.getElementById('almacen_row');
+    const almacenSelect = document.getElementById('almacen_id');
+
+    // Roles de administrador (no necesitan almacén)
+    const adminRoles = ['Super Admin', 'Administrador', 'Admin'];
+
+    function updateAlmacenField() {
+        const selectedRole = roleSelect.value;
+        const isAdmin = adminRoles.some(role => selectedRole.toLowerCase().includes(role.toLowerCase()));
+        
+        if (isAdmin) {
+            almacenRow.style.display = 'none';
+            almacenSelect.value = '';
+        } else {
+            almacenRow.style.display = 'flex';
+        }
+    }
+
+    roleSelect.addEventListener('change', updateAlmacenField);
+
+    // Ejecutar al cargar la página si hay un rol pre-seleccionado
+    document.addEventListener('DOMContentLoaded', updateAlmacenField);
+</script>
 @endpush

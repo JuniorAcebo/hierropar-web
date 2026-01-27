@@ -1,40 +1,43 @@
-// Estado de la aplicación
+// Productos cargados desde el backend (vienen en window.productosData)
 let productosData = [];
+
+// Estado de la aplicación
 let productoSeleccionado = null;
 let detalle = [];
 let contador = 0;
 
-// Cargar productos al iniciar
 document.addEventListener('DOMContentLoaded', function() {
-    loadProductos();
+    // Obtener datos de productos del window
+    if (window.productosData) {
+        productosData = window.productosData;
+    }
+    
+    // Cargar detalles existentes si es página de edit
+    if (window.isEdit && window.detallesExistentes) {
+        let contador = 0;
+        detalle = window.detallesExistentes.map(d => {
+            contador++;
+            return {
+                contador: contador,
+                id: d.producto_id,
+                nombre: d.producto.nombre,
+                codigo: d.producto.codigo,
+                cantidad: d.cantidad,
+                stock: d.producto.inventarios.reduce((sum, inv) => sum + inv.stock, 0)
+            };
+        });
+    }
+    
     initializeEventListeners();
     renderDetalle();
 });
 
-// Cargar productos desde el controlador
-function loadProductos() {
-    const baseUrl = document.querySelector('meta[name="app-url"]')?.content || '/traslados';
-    fetch(baseUrl + '/api/productos')
-        .then(response => response.json())
-        .then(data => {
-            productosData = data;
-        })
-        .catch(error => console.error('Error loading productos:', error));
-}
-
 // Inicializar event listeners
 function initializeEventListeners() {
-    // Búsqueda de productos
     document.getElementById('producto_search')?.addEventListener('keyup', handleProductoSearch);
-    
-    // Cambio de almacenes
     document.getElementById('origen_almacen_id')?.addEventListener('change', handleAlmacenChange);
     document.getElementById('destino_almacen_id')?.addEventListener('change', handleAlmacenChange);
-    
-    // Agregar producto
     document.getElementById('btn_agregar')?.addEventListener('click', agregarProducto);
-    
-    // Envío de formulario
     document.getElementById('trasladoForm')?.addEventListener('submit', validarFormulario);
 }
 
@@ -42,39 +45,38 @@ function initializeEventListeners() {
 function handleProductoSearch(e) {
     const searchTerm = e.target.value.toLowerCase();
     const dropdown = document.getElementById('products_dropdown');
+    if (searchTerm.length === 0) return dropdown.classList.remove('show');
 
-    if (searchTerm.length === 0) {
-        dropdown.classList.remove('show');
+    const filtrados = productosData.filter(p =>
+        p.nombre.toLowerCase().includes(searchTerm) || p.codigo.toLowerCase().includes(searchTerm)
+    );
+
+    if (filtrados.length === 0) {
+        dropdown.innerHTML = '<div class="text-muted p-2">No se encontraron productos</div>';
+        dropdown.classList.add('show');
         return;
     }
 
-    const filtrados = productosData.filter(p =>
-        p.nombre.toLowerCase().includes(searchTerm) ||
-        p.codigo.toLowerCase().includes(searchTerm)
-    );
-
-    let html = '';
-    filtrados.forEach(p => {
-        const totalStock = p.inventarios.reduce((sum, inv) => sum + inv.stock, 0);
-        html += `
+    dropdown.innerHTML = filtrados.map(p => {
+        const inventarios = p.inventarios || [];
+        const totalStock = inventarios.reduce((sum, inv) => sum + (inv.stock || 0), 0);
+        return `
             <div class="product-item" data-id="${p.id}" data-nombre="${p.nombre}" 
-                data-codigo="${p.codigo}" data-inventarios='${JSON.stringify(p.inventarios)}'>
-                <div class="product-item-info">
-                    <strong>${p.nombre}</strong>
-                    <span class="badge bg-info">${parseFloat(totalStock).toFixed(4)}</span>
+                 data-codigo="${p.codigo}" data-inventarios='${JSON.stringify(inventarios)}'>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>${p.nombre}</strong><br>
+                        <small class="text-muted">${p.codigo}</small>
+                    </div>
+                    <span class="badge bg-info" style="white-space: nowrap;">${Math.floor(totalStock)}</span>
                 </div>
-                <div class="product-item-code">${p.codigo}</div>
             </div>
         `;
-    });
+    }).join('');
 
-    dropdown.innerHTML = html;
     dropdown.classList.add('show');
 
-    // Agregar listeners a los items
-    document.querySelectorAll('.product-item').forEach(item => {
-        item.addEventListener('click', seleccionarProducto);
-    });
+    document.querySelectorAll('.product-item').forEach(item => item.addEventListener('click', seleccionarProducto));
 }
 
 // Seleccionar un producto
@@ -82,7 +84,6 @@ function seleccionarProducto(e) {
     const item = e.currentTarget;
     const inventarios = JSON.parse(item.dataset.inventarios);
     const origenAlmacenId = parseInt(document.getElementById('origen_almacen_id').value);
-
     let stockEnOrigen = 0;
     if (origenAlmacenId) {
         const inv = inventarios.find(i => i.almacen_id === origenAlmacenId);
@@ -98,62 +99,85 @@ function seleccionarProducto(e) {
     };
 
     document.getElementById('producto_search').value = productoSeleccionado.nombre;
-    document.getElementById('stock').value = parseFloat(productoSeleccionado.stock).toFixed(4);
+    document.getElementById('stock').value = Math.floor(productoSeleccionado.stock);
     document.getElementById('products_dropdown').classList.remove('show');
 }
 
-// Manejar cambio de almacenes
-function handleAlmacenChange(e) {
+// Cambio de almacenes
+function handleAlmacenChange() {
     const origenId = parseInt(document.getElementById('origen_almacen_id').value);
     const destinoId = parseInt(document.getElementById('destino_almacen_id').value);
 
-    // Deshabilitar opciones iguales
+    // Limpiar todo cuando cambia un almacén
+    limpiarTodoProductos();
+
+    // Validar que no sean iguales
+    if (origenId && destinoId && origenId === destinoId) {
+        Swal.fire('Error', 'El almacén origen y destino no pueden ser iguales', 'error');
+        document.getElementById('destino_almacen_id').value = '';
+        document.getElementById('productos_section').style.display = 'none';
+        return;
+    }
+
+    // Mostrar/ocultar sección de productos solo si ambos almacenes están seleccionados
+    const productosSection = document.getElementById('productos_section');
+    if (origenId && destinoId && origenId !== destinoId) {
+        productosSection.style.display = 'block';
+    } else {
+        productosSection.style.display = 'none';
+    }
+
+    // Deshabilitar opciones que ya estén seleccionadas
     document.querySelectorAll('#origen_almacen_id option').forEach(option => {
         option.disabled = parseInt(option.value) === destinoId && option.value !== '';
     });
-
     document.querySelectorAll('#destino_almacen_id option').forEach(option => {
         option.disabled = parseInt(option.value) === origenId && option.value !== '';
     });
-
-    // Actualizar stock si cambió almacén origen
-    if (productoSeleccionado && origenId && origenId !== destinoId) {
-        const inv = productoSeleccionado.inventarios.find(i => i.almacen_id === origenId);
-        productoSeleccionado.stock = inv ? inv.stock : 0;
-        document.getElementById('stock').value = parseFloat(productoSeleccionado.stock).toFixed(4);
-    }
 }
 
 // Agregar producto al detalle
 function agregarProducto() {
-    if (!productoSeleccionado) {
-        Swal.fire('Advertencia', 'Seleccione un producto', 'warning');
-        return;
-    }
+    if (!productoSeleccionado) return Swal.fire('Advertencia', 'Seleccione un producto', 'warning');
 
-    const cantidad = parseFloat(document.getElementById('cantidad').value);
-    if (cantidad <= 0) {
-        Swal.fire('Advertencia', 'La cantidad debe ser mayor a 0', 'warning');
-        return;
-    }
+    const origenId = parseInt(document.getElementById('origen_almacen_id').value);
+    if (!origenId) return Swal.fire('Advertencia', 'Debe seleccionar un almacén origen', 'warning');
 
-    if (cantidad > parseFloat(productoSeleccionado.stock)) {
-        Swal.fire('Advertencia', 'Cantidad supera el stock disponible en el almacén origen', 'warning');
-        return;
-    }
+    const cantidad = parseInt(document.getElementById('cantidad').value);
+    if (!cantidad || cantidad <= 0) return Swal.fire('Advertencia', 'La cantidad debe ser mayor a 0', 'warning');
+    
+    const stockDisponible = Math.floor(productoSeleccionado.stock) || 0;
+    if (cantidad > stockDisponible) return Swal.fire('Advertencia', `Cantidad supera el stock disponible. Stock: ${stockDisponible}`, 'warning');
 
-    // Verificar si ya existe
     const existe = detalle.find(d => d.id === productoSeleccionado.id);
+    const cantidadTotal = existe ? existe.cantidad + cantidad : cantidad;
+    
+    if (cantidadTotal > stockDisponible) {
+    return Swal.fire({
+        icon: 'warning',
+        title: 'Advertencia',
+        html: `
+            <div style="text-align:center">
+                <p>Ya agregaste: <strong>${(existe?.cantidad || 0)}</strong></p>
+                <p>Total solicitado: <strong>${cantidadTotal}</strong></p>
+                <p>Stock disponible: <strong>${stockDisponible}</strong></p>
+            </div>
+        `
+    });
+}
+
+
+    
     if (existe) {
         existe.cantidad += cantidad;
     } else {
         contador++;
         detalle.push({
-            contador: contador,
+            contador,
             id: productoSeleccionado.id,
             nombre: productoSeleccionado.nombre,
             codigo: productoSeleccionado.codigo,
-            cantidad: cantidad,
+            cantidad,
             stock: productoSeleccionado.stock
         });
     }
@@ -162,33 +186,29 @@ function agregarProducto() {
     limpiarCampos();
 }
 
-// Renderizar tabla de detalle
+// Renderizar detalle
 function renderDetalle() {
     const tbody = document.getElementById('tbody_detalle');
     const sinProductos = document.getElementById('sin_productos');
 
-    let html = '';
-    detalle.forEach(item => {
-        html += `
-            <tr>
-                <td>${item.contador}</td>
-                <td>${item.nombre} <br> <small class="text-muted">${item.codigo}</small></td>
-                <td>
-                    <input type="hidden" name="arrayidproducto[]" value="${item.id}">
-                    <input type="hidden" name="arraycantidad[]" value="${item.cantidad}">
-                    ${parseFloat(item.cantidad).toFixed(4)}
-                </td>
-                <td>${parseFloat(item.stock).toFixed(4)}</td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="eliminarProducto(${item.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
+    tbody.innerHTML = detalle.map(item => `
+        <tr>
+            <td>${item.contador}</td>
+            <td>${item.nombre} <br> <small class="text-muted">${item.codigo}</small></td>
+            <td>
+                <input type="hidden" name="arrayidproducto[]" value="${item.id}">
+                <input type="hidden" name="arraycantidad[]" value="${item.cantidad}">
+                ${Math.floor(item.cantidad)}
+            </td>
+            <td>${Math.floor(item.stock)}</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger" onclick="eliminarProducto(${item.id})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
 
-    tbody.innerHTML = html;
     sinProductos.style.display = detalle.length === 0 ? 'block' : 'none';
 }
 
@@ -201,17 +221,24 @@ function eliminarProducto(id) {
 // Limpiar campos
 function limpiarCampos() {
     document.getElementById('producto_search').value = '';
-    document.getElementById('cantidad').value = '1.000';
+    document.getElementById('cantidad').value = '1';
     document.getElementById('stock').value = '';
     productoSeleccionado = null;
 }
 
-// Validar formulario
+// Limpiar todo (productos agregados + campos)
+function limpiarTodoProductos() {
+    detalle = [];
+    contador = 0;
+    limpiarCampos();
+    renderDetalle();
+}
+
+// Validar formulario antes de enviar
 function validarFormulario(e) {
     if (detalle.length === 0) {
         e.preventDefault();
-        Swal.fire('Advertencia', 'Debe agregar al menos un producto', 'warning');
-        return false;
+        return Swal.fire('Advertencia', 'Debe agregar al menos un producto', 'warning');
     }
 
     const origenId = document.getElementById('origen_almacen_id').value;
@@ -219,21 +246,16 @@ function validarFormulario(e) {
 
     if (!origenId) {
         e.preventDefault();
-        Swal.fire('Advertencia', 'Debe seleccionar un almacén origen', 'warning');
-        return false;
+        return Swal.fire('Advertencia', 'Debe seleccionar un almacén origen', 'warning');
     }
 
     if (!destinoId) {
         e.preventDefault();
-        Swal.fire('Advertencia', 'Debe seleccionar un almacén destino', 'warning');
-        return false;
+        return Swal.fire('Advertencia', 'Debe seleccionar un almacén destino', 'warning');
     }
 
     if (origenId === destinoId) {
         e.preventDefault();
-        Swal.fire('Error', 'El almacén origen y destino no pueden ser iguales', 'error');
-        return false;
+        return Swal.fire('Error', 'El almacén origen y destino no pueden ser iguales', 'error');
     }
-
-    return true;
 }
