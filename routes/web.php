@@ -25,6 +25,8 @@ Route::get('/',[homeController::class,'index'])->name('panel');
     Route::get('productos/crear-ajuste', [ProductoController::class, 'createAjuste'])->name('productos.createAjuste');
     Route::post('productos/store-ajuste', [ProductoController::class, 'storeAjuste'])->name('productos.storeAjuste');
     Route::get('/ventas/check-stock', [VentaController::class, 'checkStock'])->name('ventas.check-stock');
+    Route::put('/ventas/{venta}/estado-pago', [VentaController::class, 'actualizarEstadoPago'])->name('ventas.estado-pago');
+    Route::put('/ventas/{venta}/estado-entrega', [VentaController::class, 'actualizarEstadoEntrega'])->name('ventas.estado-entrega');
 
 Route::resources([
     'categorias' => CategoriaController::class,

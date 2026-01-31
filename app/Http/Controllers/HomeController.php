@@ -68,7 +68,7 @@ class HomeController extends Controller
         $currentYear = Carbon::now()->year;
 
         // Ventas por mes
-        $ventasPorMes = Venta::with('detalle_ventas')
+        $ventasPorMes = Venta::with('detalles')
             ->whereYear('created_at', $currentYear)
             ->get()
             ->groupBy(function($venta) {
@@ -76,7 +76,7 @@ class HomeController extends Controller
             })
             ->map(function($ventas) {
                 return $ventas->sum(function($venta) {
-                    return $venta->detalle_ventas->sum('precio_total');
+                    return $venta->detalles->sum('precio_total');
                 });
             });
 
@@ -173,10 +173,10 @@ class HomeController extends Controller
             'totalUsuarios'       => User::count(),
 
             // MÉTRICAS DEL DÍA
-            'ventasHoy' => Venta::with('detalle_ventas')
+            'ventasHoy' => Venta::with('detalles')
                 ->whereDate('created_at', $today)
                 ->get()
-                ->sum(fn($venta) => $venta->detalle_ventas->sum('precio_total')),
+                ->sum(fn($venta) => $venta->detalles->sum('precio_total')),
 
             'comprasHoy' => Compra::with('detalles')
                 ->whereDate('created_at', $today)

@@ -19,9 +19,6 @@ class ComprobanteSeeder extends Seeder
             [
                 'tipo_comprobante' => 'Boleta',
             ],
-            [
-                'tipo_comprobante' => 'Nota de débito',
-            ],
         ]);
     }
     // comando para hacer la semilla

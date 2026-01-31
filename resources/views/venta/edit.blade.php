@@ -418,7 +418,23 @@
                     </div>
                 </div>
 
+                <!-- Campos ocultos requeridos -->
+                <input type="hidden" name="user_id" value="{{ auth()->id() }}">
+
                 <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="almacen_id"><i class="fas fa-warehouse me-1"></i>Sucursal/Almacén</label>
+                            <select class="form-control" id="almacen_id" name="almacen_id" required>
+                                <option value="">Seleccione almacén</option>
+                                @foreach ($almacenes as $almacen)
+                                    <option value="{{ $almacen->id }}" {{ $venta->almacen_id == $almacen->id ? 'selected' : '' }}>
+                                        {{ $almacen->nombre }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="cliente_id"><i class="fas fa-user me-1"></i>Cliente</label>
@@ -461,14 +477,14 @@
 
                 <div class="card-body">
                     <div id="productos-container">
-                        @foreach ($venta->productos as $producto)
+                        @foreach ($venta->detalles as $detalle)
                             <div class="producto-row">
                                 <div class="col-md-4">
                                     <select class="form-control select2-producto" name="arrayidproducto[]" required>
                                         <option value="">Seleccione producto</option>
                                         @foreach ($productos as $prod)
                                             <option value="{{ $prod->id }}"
-                                                {{ $producto->id == $prod->id ? 'selected' : '' }}
+                                                {{ $detalle->producto_id == $prod->id ? 'selected' : '' }}
                                                 data-precio="{{ $prod->precio_venta }}" data-stock="{{ $prod->stock }}">
                                                 {{ $prod->nombre }} (Stock: {{ $prod->stock }})
                                             </option>
@@ -478,7 +494,7 @@
                                 </div>
                                 <div class="col-md-2">
                                     <input type="number" step="0.0001" class="form-control cantidad"
-                                        name="arraycantidad[]" value="{{ $producto->pivot->cantidad }}" min="0.0001"
+                                        name="arraycantidad[]" value="{{ $detalle->cantidad }}" min="0.0001"
                                         required>
                                     <small class="text-muted">Cantidad</small>
                                 </div>
@@ -487,7 +503,7 @@
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
                                         <input type="number" step="0.01" class="form-control precio-venta"
-                                            name="arrayprecioventa[]" value="{{ $producto->pivot->precio_venta }}"
+                                            name="arrayprecioventa[]" value="{{ $detalle->precio_venta }}"
                                             required>
                                     </div>
                                     <small class="text-muted">Precio venta</small>
@@ -496,7 +512,7 @@
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
                                         <input type="number" step="0.01" class="form-control descuento"
-                                            name="arraydescuento[]" value="{{ $producto->pivot->descuento ?? 0 }}">
+                                            name="arraydescuento[]" value="{{ $detalle->descuento ?? 0 }}">
                                     </div>
                                     <small class="text-muted">Descuento</small>
                                 </div>
@@ -528,6 +544,34 @@
                         <span class="input-group-text">$</span>
                         <input type="number" step="0.01" class="form-control total-highlight" id="total"
                             name="total" value="{{ $venta->total }}" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de Notas -->
+            <div class="border-section">
+                <div class="section-title">
+                    <i class="fas fa-sticky-note"></i>
+                    Notas
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="nota_personal"><i class="fas fa-lock me-1"></i>Nota Interna</label>
+                            <textarea class="form-control" id="nota_personal" name="nota_personal" rows="3" 
+                                placeholder="Nota privada/interna (solo para el sistema)...">{{ $venta->nota_personal ?? '' }}</textarea>
+                            <small class="text-muted">Esta nota solo es visible en el sistema</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="nota_cliente"><i class="fas fa-user me-1"></i>Nota Cliente</label>
+                            <textarea class="form-control" id="nota_cliente" name="nota_cliente" rows="3" 
+                                placeholder="Nota para el cliente (se puede mostrar en documentos)...">{{ $venta->nota_cliente ?? '' }}</textarea>
+                            <small class="text-muted">Esta nota puede ser visible para el cliente</small>
+                        </div>
                     </div>
                 </div>
             </div>

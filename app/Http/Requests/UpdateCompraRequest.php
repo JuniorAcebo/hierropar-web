@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreCompraRequest extends FormRequest
+class UpdateCompraRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -13,13 +13,12 @@ class StoreCompraRequest extends FormRequest
 
     public function rules(): array
     {
+        $compraId = $this->route('compra') ? $this->route('compra')->id : $this->route('id');
+        
         return [
-            // Datos generales
-            'fecha_hora' => 'required|date|before_or_equal:now',
-            'numero_comprobante' => 'required|string|max:255|unique:compras,numero_comprobante',
+            'numero_comprobante' => 'required|string|max:255|unique:compras,numero_comprobante,' . $compraId,
             'total' => 'required|numeric|min:0.01',
             'proveedor_id' => 'required|exists:proveedores,id',
-            'user_id' => 'required|exists:users,id',
             'comprobante_id' => 'required|exists:comprobantes,id',
             'almacen_id' => 'required|exists:almacenes,id',
             

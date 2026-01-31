@@ -220,6 +220,15 @@
                     <small class="text-danger">{{ $message }}</small>
                     @enderror
                 </div>
+                <!------Telefono---->
+                <div class="col-12">
+                    <label for="telefono" class="form-label">Teléfono:</label>
+                    <input required type="text" name="telefono" id="telefono" class="form-control"
+                           value="{{ old('telefono') }}" placeholder="Ingrese el número de teléfono">
+                    @error('telefono')
+                    <small class="text-danger">{{ $message }}</small>
+                    @enderror
+                </div>
 
                 <!--------------Documento------->
                 <div class="col-md-6">

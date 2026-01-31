@@ -267,10 +267,15 @@
 
                 <!-- Nota Personal -->
                 <div class="row mt-3 compact-row">
-                    <div class="col-md-12">
-                        <label for="nota_personal" class="form-label">Nota:</label>
-                        <textarea name="nota_personal" id="nota_personal" class="form-control form-control-sm" rows="1" 
+                    <div class="col-md-6">
+                        <label for="nota_personal" class="form-label">Nota Interna:</label>
+                        <textarea name="nota_personal" id="nota_personal" class="form-control form-control-sm" rows="2" 
                                   placeholder="Nota personal (opcional)..."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="nota_cliente" class="form-label">Nota Cliente:</label>
+                        <textarea name="nota_cliente" id="nota_cliente" class="form-control form-control-sm" rows="2" 
+                                  placeholder="Nota para el cliente (opcional)..."></textarea>
                     </div>
                 </div>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreVentaRequest;
+use App\Http\Requests\UpdateVentaRequest;
 use App\Models\Cliente;
 use App\Models\Producto;
 use App\Models\Venta;
@@ -50,7 +51,8 @@ class VentaController extends Controller
             'comprobante',
             'cliente.persona',
             'user',
-            'detalles.producto'
+            'detalles.producto',
+            'almacen'
         ])->findOrFail($id);
 
         $pdf = Pdf::loadView('venta.pdf', compact('venta'))
@@ -90,6 +92,16 @@ class VentaController extends Controller
             'almacen_id' => 'required|exists:almacenes,id'
         ]);
 
+        $producto = Producto::with('tipounidad')->find($request->producto_id);
+
+        if ($producto->tipounidad && !$producto->tipounidad->maneja_stock) {
+            return response()->json([
+                'success' => true,
+                'stock' => 999999, // Un numero alto para indicar ilimitado
+                'ilimitado' => true
+            ]);
+        }
+
         $inventario = InventarioAlmacen::where('producto_id', $request->producto_id)
             ->where('almacen_id', $request->almacen_id)
             ->first();
@@ -113,7 +125,7 @@ class VentaController extends Controller
         try {
             DB::beginTransaction();
             
-            // Validar stock antes de crear nada
+            // Validar stock de forma masiva
             $items = [];
             foreach ($request->arrayidproducto as $index => $productoId) {
                 $items[] = [
@@ -124,7 +136,7 @@ class VentaController extends Controller
             $this->ventaService->validarStockDisponible($items, $request->almacen_id);
 
             $venta = Venta::create([
-                'fecha_hora' => now(),
+                'fecha_hora' => $request->fecha_hora ?? now(),
                 'numero_comprobante' => $request->numero_comprobante,
                 'total' => 0,
                 'estado_pago' => 'pendiente',
@@ -134,6 +146,7 @@ class VentaController extends Controller
                 'comprobante_id' => $request->comprobante_id,
                 'user_id' => auth()->id(),
                 'nota_personal' => $request->nota_personal ?? null,
+                'nota_cliente' => $request->nota_cliente ?? null,
             ]);
 
             $total = 0;
@@ -171,11 +184,12 @@ class VentaController extends Controller
 
     public function show(Venta $venta)
     {
-        $venta->load(['comprobante', 'cliente.persona', 'user', 'detalles.producto', 'almacen']);
+        $venta->load(['comprobante', 'cliente.persona', 'user', 'detalles.producto.tipounidad', 'almacen']);
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
                 'success' => true,
+                'venta' => $venta,
                 'html' => view('venta.show-modal', compact('venta'))->render()
             ]);
         }
@@ -188,7 +202,7 @@ class VentaController extends Controller
         $venta = Venta::with([
             'comprobante',
             'cliente.persona',
-            'detalles.producto'
+            'detalles.producto.tipounidad'
         ])->findOrFail($id);
 
         $almacenes = \App\Models\Almacen::where('estado', 1)->get();
@@ -203,14 +217,15 @@ class VentaController extends Controller
         return view('venta.edit', compact('venta', 'productos', 'clientes', 'comprobantes', 'almacenes'));
     }
 
-    public function update(Request $request, string $id)
+    public function update(UpdateVentaRequest $request, string $id)
     {
         try {
             DB::beginTransaction();
 
-            $venta = Venta::with('detalles')->findOrFail($id);
+            // Cargar con relaciones para el service
+            $venta = Venta::with('detalles.producto.tipounidad')->findOrFail($id);
 
-            // 1. Revertir stock (devolver entrada)
+            // 1. Revertir stock (del almacén que tenía la venta originalmente)
             $this->ventaService->revertirStock($venta);
 
             // 2. Eliminar detalles viejos
@@ -224,10 +239,10 @@ class VentaController extends Controller
                 'almacen_id' => $request->almacen_id,
                 'comprobante_id' => $request->comprobante_id,
                 'nota_personal' => $request->nota_personal ?? null,
+                'nota_cliente' => $request->nota_cliente ?? null,
             ]);
 
-            // 4. Create new details
-            $total = 0;
+            // 4. Validar nuevo stock disponible (en el nuevo almacén)
             $items = [];
             foreach ($request->arrayidproducto as $index => $productoId) {
                 $items[] = [
@@ -235,9 +250,10 @@ class VentaController extends Controller
                     'cantidad' => $request->arraycantidad[$index]
                 ];
             }
-            
             $this->ventaService->validarStockDisponible($items, $request->almacen_id);
 
+            // 5. Crear nuevos detalles
+            $total = 0;
             foreach ($request->arrayidproducto as $index => $productoId) {
                 $cantidad = $request->arraycantidad[$index];
                 $precioVenta = $request->arrayprecioventa[$index];
@@ -254,7 +270,7 @@ class VentaController extends Controller
             }
             $venta->update(['total' => $total]);
 
-            // 5. Salida stock nuevamente
+            // 6. Salida stock nuevamente
             $this->ventaService->procesarSalidaStock($venta);
 
             DB::commit();
@@ -272,22 +288,69 @@ class VentaController extends Controller
     public function destroy(string $id)
     {
         try {
-            DB::transaction(function () use ($id) {
-                $venta = Venta::with('detalles')->findOrFail($id);
+            DB::beginTransaction();
 
-                // Revert stock
-                $this->ventaService->revertirStock($venta);
+            $venta = Venta::with('detalles.producto.tipounidad')->findOrFail($id);
 
-                // Delete details and sale
-                $venta->detalles()->delete();
-                $venta->delete();
-            });
+            // Revertir stock antes de borrar
+            $this->ventaService->revertirStock($venta);
+
+            // Borrar físicamente (o podrías marcar estado = 0 si prefieres)
+            $venta->detalles()->delete();
+            $venta->delete();
+
+            DB::commit();
 
             return redirect()->route('ventas.index')
-                ->with('success', 'Venta eliminada permanentemente y stock revertido');
+                ->with('success', 'Venta eliminada y stock revertido correctamente');
         } catch (Exception $e) {
+            DB::rollBack();
             return redirect()->route('ventas.index')
                 ->with('error', 'No se pudo eliminar la venta: ' . $e->getMessage());
+        }
+    }
+
+    public function actualizarEstadoPago(Request $request, string $id)
+    {
+        try {
+            $venta = Venta::findOrFail($id);
+            
+            $estado = $request->input('estado_pago', 'pagado');
+            
+            $venta->update(['estado_pago' => $estado]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado de pago actualizado correctamente',
+                'venta' => $venta
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el estado de pago: ' . $e->getMessage()
+            ], 400);
+        }
+    }
+
+    public function actualizarEstadoEntrega(Request $request, string $id)
+    {
+        try {
+            $venta = Venta::findOrFail($id);
+            
+            $estado = $request->input('estado_entrega', 'entregado');
+            
+            $venta->update(['estado_entrega' => $estado]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado de entrega actualizado correctamente',
+                'venta' => $venta
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el estado de entrega: ' . $e->getMessage()
+            ], 400);
         }
     }
 }

@@ -374,6 +374,16 @@
                 Registro de Ventas
             </div>
             <div class="card-body">
+                <!-- Buscador Inteligente -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text bg-primary text-white">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" id="searchVentas" class="form-control" placeholder="Buscar por comprobante, cliente, total, fecha...">
+                    </div>
+                </div>
+
                 <table id="datatablesVentas" class="modern-table">
                     <thead>
                         <tr>
@@ -381,7 +391,8 @@
                             <th>Cliente</th>
                             <th>Fecha/Hora</th>
                             <th>Total</th>
-                            <th>Estado</th>
+                            <th>Estado Pago</th>
+                            <th>Estado Entrega</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -421,10 +432,17 @@
                                     <span class="total-amount">S/ {{ number_format($venta->total, 2) }}</span>
                                 </td>
                                 <td>
-                                    @if ($venta->estado == 1)
-                                        <span class="badge-modern badge-activo">Activo</span>
+                                    @if ($venta->estado_pago == 'pendiente' || $venta->estado_pago == 0)
+                                        <span class="badge-modern badge-anulado">Pendiente</span>
                                     @else
-                                        <span class="badge-modern badge-anulado">Anulado</span>
+                                        <span class="badge-modern badge-activo">Pagado</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($venta->estado_entrega == 'pendiente' || $venta->estado_entrega == 0)
+                                        <span class="badge-modern badge-anulado">Pendiente</span>
+                                    @else
+                                        <span class="badge-modern badge-activo">Entregado</span>
                                     @endif
                                 </td>
                                 <td>
@@ -531,6 +549,12 @@
                     <button id="printVentaButton" class="btn btn-primary">
                         <i class="fas fa-print me-1"></i> Imprimir
                     </button>
+                    <button id="marcarPagadoButton" class="btn btn-success" title="Marcar como pagado">
+                        <i class="fas fa-money-bill me-1"></i> Pagar
+                    </button>
+                    <button id="marcarEntregadoButton" class="btn btn-info text-white" title="Marcar como entregado">
+                        <i class="fas fa-truck me-1"></i> Entregado
+                    </button>
                 </div>
             </div>
         </div>
@@ -552,6 +576,15 @@
                     info: "Mostrando {start} a {end} de {rows} ventas"
                 }
             });
+
+            // Buscador inteligente
+            const searchInput = document.getElementById('searchVentas');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    dataTable.search(searchTerm);
+                });
+            }
 
             // Delegación de eventos para botones dinámicos
             document.body.addEventListener('click', function(e) {
@@ -591,6 +624,20 @@
                         iframe.contentWindow.print();
                     };
                 }
+
+                // Manejar clic en botón Pagar
+                if (e.target.closest('#marcarPagadoButton')) {
+                    e.preventDefault();
+                    const ventaId = document.getElementById('viewVentaModal').dataset.currentVenta;
+                    actualizarEstadoPago(ventaId, 'pagado');
+                }
+
+                // Manejar clic en botón Entrega
+                if (e.target.closest('#marcarEntregadoButton')) {
+                    e.preventDefault();
+                    const ventaId = document.getElementById('viewVentaModal').dataset.currentVenta;
+                    actualizarEstadoEntrega(ventaId, 'entregado');
+                }
             });
 
             function loadVentaDetails(ventaId) {
@@ -621,6 +668,24 @@
                     if (data.success) {
                         modalContent.innerHTML = data.html;
                         document.getElementById('ventaPdfLink').href = `/ventas/pdf/${ventaId}`;
+
+                        // Actualizar estado de los botones según el estado de pago y entrega
+                        const marcarPagadoBtn = document.getElementById('marcarPagadoButton');
+                        const marcarEntregadoBtn = document.getElementById('marcarEntregadoButton');
+
+                        if (data.venta.estado_pago === 'pagado' || data.venta.estado_pago === 1) {
+                            marcarPagadoBtn.disabled = true;
+                            marcarPagadoBtn.innerHTML = '<i class="fas fa-check me-1"></i> Pagado';
+                        } else {
+                            marcarPagadoBtn.disabled = false;
+                        }
+
+                        if (data.venta.estado_entrega === 'entregado' || data.venta.estado_entrega === 1) {
+                            marcarEntregadoBtn.disabled = true;
+                            marcarEntregadoBtn.innerHTML = '<i class="fas fa-check me-1"></i> Entregado';
+                        } else {
+                            marcarEntregadoBtn.disabled = false;
+                        }
                     } else {
                         throw new Error(data.message || 'Error en los datos recibidos');
                     }
@@ -636,6 +701,84 @@
                             </button>
                         </div>
                     `;
+                });
+            }
+
+            function actualizarEstadoPago(ventaId, estado) {
+                Swal.fire({
+                    title: '¿Confirmar pago?',
+                    text: 'Marcaré esta venta como pagada',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#28a745',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, confirmar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/ventas/${ventaId}/estado-pago`, {
+                            method: 'PUT',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ estado_pago: estado })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('¡Éxito!', data.message, 'success').then(() => {
+                                    loadVentaDetails(ventaId);
+                                });
+                            } else {
+                                Swal.fire('Error', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            Swal.fire('Error', 'Error al actualizar el estado', 'error');
+                        });
+                    }
+                });
+            }
+
+            function actualizarEstadoEntrega(ventaId, estado) {
+                Swal.fire({
+                    title: '¿Confirmar entrega?',
+                    text: 'Marcaré esta venta como entregada',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#17a2b8',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Sí, confirmar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/ventas/${ventaId}/estado-entrega`, {
+                            method: 'PUT',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                                'Content-Type': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: JSON.stringify({ estado_entrega: estado })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                Swal.fire('¡Éxito!', data.message, 'success').then(() => {
+                                    loadVentaDetails(ventaId);
+                                });
+                            } else {
+                                Swal.fire('Error', data.message, 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            Swal.fire('Error', 'Error al actualizar el estado', 'error');
+                        });
+                    }
                 });
             }
         });

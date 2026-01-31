@@ -213,11 +213,28 @@
     <div class="container">
         <h1>Editar Compra</h1>
 
+        @if ($errors->any())
+            <div class="alert alert-danger">
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        @if (session('error'))
+            <div class="alert alert-danger">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <form action="{{ route('compras.update', $compra->id) }}" method="POST">
             @csrf
             @method('PUT')
 
             <div class="row">
+                <input type="hidden" name="user_id" value="{{ auth()->id() }}">
                 <div class="col-md-6">
                     <div class="form-group">
                         <label for="numero_comprobante">N° Comprobante</label>
@@ -263,6 +280,23 @@
                                 </option>
                             @endforeach
                         </select>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="costo_transporte">Costo Transporte</label>
+                        <input type="number" step="0.01" class="form-control" id="costo_transporte" name="costo_transporte"
+                            value="{{ $compra->costo_transporte }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label for="nota_personal">Notas</label>
+                        <textarea class="form-control" id="nota_personal" name="nota_personal" rows="2">{{ $compra->nota_personal }}</textarea>
                     </div>
                 </div>
 

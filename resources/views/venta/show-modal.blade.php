@@ -1,78 +1,144 @@
-<div class="container-fluid p-3">
-    <!-- Encabezado (igual que compra) -->
-    <div class="text-center mb-2">
-        <h4 class="mb-0">MATA DOORS</h4>
-        <p class="mb-1 small">CARPINTERIA</p>
-    </div>
+<style>
+    .show-modal-content .border-section {
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: #fff;
+    }
+    .show-modal-content .section-title {
+        font-size: 15px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #e9ecef;
+    }
+    .show-modal-content .section-title i {
+        margin-right: 8px;
+        color: #3498db;
+    }
+    .show-modal-content .label-title {
+        font-weight: 500;
+        font-size: 13px;
+        color: #495057;
+        margin-bottom: 2px;
+    }
+    .show-modal-content .value-text {
+        font-size: 14px;
+        color: #212529;
+        font-weight: 500;
+    }
+    .show-modal-content .badge-modern {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .show-modal-content .table th {
+        font-size: 13px;
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+    .show-modal-content .table td {
+        font-size: 13px;
+        vertical-align: middle;
+    }
+</style>
 
-    <!-- Datos Cliente (similar a proveedor en compra) -->
-    <div class="row small mb-2">
-        <div class="col-6"><strong>CLIENTE:</strong> {{ $venta->cliente->persona->nombre }}</div>
-    </div>
-
-    <hr class="my-2">
-
-    <!-- Detalle Venta -->
-    <div class="text-center mb-2">
-        <h5 class="mb-0">NOTA DE VENTA N° {{ $venta->numero_comprobante }}</h5>
-        <p class="small mb-1">REF: VENTA{{ \Carbon\Carbon::parse($venta->fecha_hora)->format('Y/m/dHis') }}</p>
-    </div>
-
-    <!-- Metadatos (igual estructura que compra) -->
-    <div class="row small mb-3">
-        <div class="col-6"><strong>USUARIO:</strong> {{ auth()->user()->name }}</div>
-        <div class="col-6"><strong>FECHA:</strong> {{ \Carbon\Carbon::parse($venta->fecha_hora)->format('d/m/Y H:i') }}</div>
-    </div>
-
-    <!-- Tabla Productos (misma estructura que compra) -->
-    <table class="table table-sm table-bordered mb-3">
-        <thead class="small">
-            <tr>
-                <th width="5%">Nº</th>
-                <th>Descripción</th>
-                <th width="12%">Cantidad</th>
-                <th width="15%">Precio Unit.</th>
-                <th width="15%">Subtotal</th>
-            </tr>
-        </thead>
-        <tbody class="small">
-            @foreach ($venta->detalles as $index => $detalle)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>{{ $detalle->producto->nombre }}</td>
-                    <td class="text-end">{{ number_format($detalle->cantidad, 2) }} UNI</td>
-                    <td class="text-end">{{ number_format($detalle->precio_venta, 2) }}</td>
-                    <td class="text-end">{{ number_format($detalle->cantidad * $detalle->precio_venta, 2) }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-    <!-- Totales (similar estructura) -->
-    <div class="row justify-content-end">
-        <div class="col-md-5">
-            <table class="table table-sm table-bordered">
-                <tr class="small">
-                    <th>Total (BOB)</th>
-                    <td class="text-end">{{ number_format($venta->total, 2) }}</td>
-                </tr>
-                <tr class="small">
-                    <th>Por cobrar (BOB)</th>
-                    <td class="text-end">{{ number_format($venta->total, 2) }}</td>
-                </tr>
-            </table>
+<div class="container-fluid p-0 show-modal-content">
+    
+    <div class="border-section">
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <h5 class="mb-1 text-primary fw-bold">VENTA #{{ $venta->numero_comprobante }}</h5>
+                <p class="text-muted small mb-0">Vendedor: {{ $venta->user->name ?? 'Sistema' }}</p>
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="badge bg-light text-dark border">
+                    <i class="far fa-clock me-1"></i> 
+                    {{ \Carbon\Carbon::parse($venta->fecha_hora)->format('d/m/Y H:i A') }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="section-title">
+            <i class="fas fa-info-circle"></i> Datos Generales
+        </div>
+        
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="label-title">Cliente</div>
+                <div class="value-text">{{ $venta->cliente->persona->razon_social }}</div>
+                <small class="text-muted">{{ $venta->cliente->persona->tipo_documento }}: {{ $venta->cliente->persona->numero_documento }}</small>
+            </div>
+            <div class="col-md-4">
+                <div class="label-title">Sucursal</div>
+                <div class="value-text">{{ $venta->almacen->nombre ?? 'N/A' }}</div>
+            </div>
+            <div class="col-md-4">
+                <div class="label-title">Tipo Comprobante</div>
+                <div class="value-text">{{ $venta->comprobante->tipo_comprobante ?? 'N/A' }}</div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="label-title">Nota Interna</div>
+                <div class="value-text fst-italic text-muted">
+                    {{ $venta->nota_personal ?: 'Sin nota interna' }}
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="label-title">Nota Cliente</div>
+                <div class="value-text fst-italic text-muted">
+                    {{ $venta->nota_cliente ?: 'Sin nota al cliente' }}
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Firmas (igual que compra) -->
-    <div class="row small mt-3">
-        <div class="col-6 text-center"><span class="d-block border-top pt-1">FIRMA CLIENTE</span></div>
-        <div class="col-6 text-center"><span class="d-block border-top pt-1">FIRMA RESPONSABLE</span></div>
+    <div class="border-section">
+        <div class="section-title">
+            <i class="fas fa-shopping-cart"></i> Detalles de la Venta
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-sm table-hover border-bottom">
+                <thead>
+                    <tr>
+                        <th width="5%">#</th>
+                        <th>Producto</th>
+                        <th class="text-end">Cantidad</th>
+                        <th class="text-end">Precio Unit.</th>
+                        <th class="text-end">Descuento</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($venta->detalles as $index => $detalle)
+                        <tr>
+                            <td>{{ $index + 1 }}</td>
+                            <td>
+                                <div class="fw-bold text-dark">{{ $detalle->producto->nombre }}</div>
+                                <small class="text-muted">{{ $detalle->producto->codigo }}</small>
+                            </td>
+                            <td class="text-end">{{ number_format($detalle->cantidad, 2) }}</td>
+                            <td class="text-end">{{ number_format($detalle->precio_venta, 2) }}</td>
+                            <td class="text-end text-danger">{{ number_format($detalle->descuento, 2) }}</td>
+                            <td class="text-end fw-bold">{{ number_format(($detalle->cantidad * $detalle->precio_venta) - $detalle->descuento, 2) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot class="bg-light">
+                    <tr>
+                        <td colspan="5" class="text-end fw-bold">TOTAL:</td>
+                        <td class="text-end fw-bold text-primary fs-6">{{ number_format($venta->total, 2) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </div>
-
-    <!-- Pie (igual que compra) -->
-    <div class="row small mt-2">
-        <div class="col-6">Creado: {{ auth()->user()->name }}</div>
-        <div class="col-6 text-end">Fecha: {{ \Carbon\Carbon::now()->format('d/m/Y H:i') }}</div>
+    
+    <div class="text-end small text-muted">
+        Documento generado el {{ \Carbon\Carbon::now()->format('d/m/Y H:i:s') }}
     </div>
 </div>

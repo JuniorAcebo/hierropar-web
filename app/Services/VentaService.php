@@ -17,14 +17,21 @@ class VentaService
         return DB::transaction(function () use ($venta) {
             $almacenId = $venta->almacen_id;
 
+            // Asegurar que detalles y productos estén cargados
+            $venta->loadMissing('detalles.producto.tipounidad');
+
             foreach ($venta->detalles as $detalle) {
+                if ($detalle->producto->tipounidad && !$detalle->producto->tipounidad->maneja_stock) {
+                    continue; // No descontar stock si es servicio
+                }
+
                 $inventario = InventarioAlmacen::where('producto_id', $detalle->producto_id)
                     ->where('almacen_id', $almacenId)
                     ->lockForUpdate()
                     ->first();
 
                 if (!$inventario || $inventario->stock < $detalle->cantidad) {
-                    throw new Exception("Stock insuficiente para el producto: {$detalle->producto->nombre}");
+                    throw new Exception("Stock insuficiente para el producto: {$detalle->producto->nombre}. Disponible: " . ($inventario->stock ?? 0));
                 }
 
                 $inventario->stock -= $detalle->cantidad;
@@ -34,22 +41,27 @@ class VentaService
     }
 
     /**
-     * Revierte el stock (al eliminar o anular venta).
+     * Revierte el stock (al eliminar o editar venta).
      */
     public function revertirStock(Venta $venta)
     {
         return DB::transaction(function () use ($venta) {
             $almacenId = $venta->almacen_id;
+            
+            // Usar el almacén original de la venta
+            $venta->loadMissing('detalles.producto.tipounidad');
 
             foreach ($venta->detalles as $detalle) {
+                if ($detalle->producto->tipounidad && !$detalle->producto->tipounidad->maneja_stock) {
+                    continue; 
+                }
+
                 $inventario = InventarioAlmacen::where('producto_id', $detalle->producto_id)
                     ->where('almacen_id', $almacenId)
                     ->lockForUpdate()
                     ->first();
 
                 if (!$inventario) {
-                    // Si no existe inventario (raro si salió de ahí), se crea? 
-                    // Mejor asumimos que existe o se crea uno nuevo con ese stock devuelto.
                     InventarioAlmacen::create([
                         'producto_id' => $detalle->producto_id,
                         'almacen_id' => $almacenId,
@@ -64,11 +76,19 @@ class VentaService
     }
 
     /**
-     * Valida stock antes de crear venta.
+     * Valida stock antes de crear venta de forma masiva para evitar N+1.
      */
     public function validarStockDisponible($items, $almacenId)
     {
+        $productoIds = array_column($items, 'producto_id');
+        $productos = \App\Models\Producto::with('tipounidad')->whereIn('id', $productoIds)->get()->keyBy('id');
+        
         foreach ($items as $item) {
+            $producto = $productos->get($item['producto_id']);
+            
+            if (!$producto) continue;
+            if ($producto->tipounidad && !$producto->tipounidad->maneja_stock) continue;
+
             $inventario = InventarioAlmacen::where('producto_id', $item['producto_id'])
                 ->where('almacen_id', $almacenId)
                 ->first();
@@ -76,7 +96,7 @@ class VentaService
             $stock = $inventario ? $inventario->stock : 0;
             
             if ($stock < $item['cantidad']) {
-                throw new Exception("Stock insuficiente para producto ID {$item['producto_id']}. Stock actual: {$stock}");
+                throw new Exception("Stock insuficiente para {$producto->nombre}. Stock actual: {$stock}, Solicitado: {$item['cantidad']}");
             }
         }
     }

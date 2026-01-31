@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>VENTA #{{ $venta->numero_comprobante }}</title>
@@ -9,204 +8,212 @@
             font-family: 'DejaVu Sans', sans-serif;
             font-size: 10px;
             margin: 0;
-            padding: 5px 10px;
+            padding: 0;
+            color: #333;
         }
-
-        .header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-            padding-bottom: 3px;
-            border-bottom: 1px solid #333;
+        .header-table {
+            width: 100%;
+            border-bottom: 2px solid #555;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
         }
-
-        .logo {
-            height: 30px;
-            margin-right: 10px;
-        }
-
-        .company-info {
-            flex-grow: 1;
-            line-height: 1.2;
-        }
-
         .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .doc-title {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: right;
+            color: #2c3e50;
+        }
+        .section-box {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            background-color: #fff;
+        }
+        .section-title {
             font-size: 12px;
             font-weight: bold;
+            color: #2c3e50;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 8px;
+            padding-bottom: 4px;
         }
-
-        h2 {
-            font-size: 11px;
-            margin: 5px 0;
-            text-align: center;
-            background-color: #f5f5f5;
-            padding: 2px 0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 5px;
-            font-size: 9px;
-        }
-
-        th,
-        td {
-            padding: 3px;
-            border: 1px solid #ddd;
-        }
-
-        th {
-            background-color: #f5f5f5;
-        }
-
-        .total-row {
-            font-weight: bold;
-        }
-
-        .signature-area {
-            margin-top: 10px;
-            display: flex;
-            justify-content: space-between;
-            font-size: 9px;
-        }
-
-        .signature {
-            width: 45%;
-            border-top: 1px solid #000;
-            text-align: center;
-            padding-top: 2px;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
         .info-table {
             width: 100%;
-            margin-bottom: 5px;
         }
-
         .info-table td {
-            padding: 1px 3px;
-            border: none;
+            vertical-align: top;
+            padding: 3px;
         }
-
-        .compact {
-            margin: 0;
-            padding: 0;
+        .label {
+            font-weight: bold;
+            color: #555;
+            font-size: 9px;
+            margin-bottom: 2px;
         }
-
-        .badge {
-            padding: 1px 3px;
-            border-radius: 3px;
-            font-size: 8px;
+        .value {
+            font-size: 11px;
+            color: #000;
+        }
+        .table-details {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+        .table-details th {
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #ccc;
+            padding: 6px;
+            text-align: left;
             font-weight: bold;
         }
-
-        .badge-success {
-            background-color: #d4edda;
-            color: #155724;
+        .table-details td {
+            border-bottom: 1px solid #eee;
+            padding: 6px;
         }
-
-        .badge-danger {
-            background-color: #f8d7da;
-            color: #721c24;
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .footer-note {
+            font-size: 8px;
+            color: #777;
+            text-align: right;
+            margin-top: 10px;
+        }
+        .badge {
+            background-color: #eee; 
+            padding: 2px 5px; 
+            border-radius: 3px;
         }
     </style>
 </head>
-
-<body class="compact">
-    <div class="header">
-        <img class="logo" src="{{ public_path('img/MaraDoors.png') }}" alt="Logo">
-        <div class="company-info">
-            <div class="company-name">MARA-DOORS</div>
-            <div>Ballivián entre 13 y 14 - Telf: 71190122</div>
-        </div>
-        <div style="text-align: right; font-size: 9px;">
-            <div><strong>VENTA #{{ $venta->numero_comprobante }}</strong></div>
-            <div>{{ $venta->fecha_hora ? \Carbon\Carbon::parse($venta->fecha_hora)->format('d/m/Y') : 'N/A' }}</div>
-            <div>
-                <span class="badge {{ $venta->estado ? 'badge-success' : 'badge-danger' }}">
-                    {{ $venta->estado ? 'ACTIVA' : 'ANULADA' }}
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <table class="info-table">
+<body>
+    <!-- Encabezado -->
+    <table class="header-table">
         <tr>
-            <td width="20%"><strong>Cliente:</strong></td>
-            <td>{{ $venta->cliente->persona->nombre }}</td>
-        </tr>
-        <tr>
-            <td><strong>Documento:</strong></td>
-            <td>{{ $venta->cliente->persona->tipo_documento }} {{ $venta->cliente->persona->numero_documento }}</td>
-        </tr>
-        <tr>
-            <td><strong>Comprobante:</strong></td>
-            <td>{{ $venta->comprobante->tipo_comprobante }}</td>
-        </tr>
-        <tr>
-            <td><strong>Vendedor:</strong></td>
-            <td>{{ $venta->user->name ?? 'Sistema' }}</td>
+            <td width="60%">
+                <div class="company-name">MARA-DOORS</div>
+                <div style="font-size:10px;">Ballivián entre 13 y 14 - Telf: 71190122</div>
+            </td>
+            <td width="40%" class="text-right">
+                <div class="doc-title">NOTA DE VENTA</div>
+                <div style="font-size:12px;">N° {{ $venta->numero_comprobante }}</div>
+                <div style="font-size:9px; color:#555;">{{ \Carbon\Carbon::parse($venta->fecha_hora)->format('d/m/Y H:i A') }}</div>
+            </td>
         </tr>
     </table>
 
-    <h2>DETALLE DE PRODUCTOS VENDIDOS</h2>
-    <table>
-        <thead>
+    <!-- Datos Generales -->
+    <div class="section-box">
+        <div class="section-title">DATOS GENERALES</div>
+        <table class="info-table">
             <tr>
-                <th width="5%">#</th>
-                <th>Producto</th>
-                <th width="10%">Cant.</th>
-                <th width="15%">P. Venta</th>
-                <th width="15%">Subtotal</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($venta->detalles as $detalle)
-                <tr>
-                    <td class="text-center">{{ $loop->iteration }}</td>
-                    <td>{{ $venta->detalles->count() > 5 ? Str::limit($detalle->producto->nombre, 20) : $detalle->producto->nombre }}</td>
-                    <td class="text-right">{{ $detalle->cantidad }}</td>
-                    <td class="text-right">Bs. {{ number_format($detalle->precio_venta, 2) }}</td>
-                    <td class="text-right">Bs. {{ number_format($detalle->cantidad * $detalle->precio_venta, 2) }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            @if($venta->descuento > 0)
-            <tr>
-                <td colspan="4" class="text-right"><strong>SUBTOTAL Bs.</strong></td>
-                <td class="text-right">Bs. {{ number_format($venta->total + $venta->descuento, 2) }}</td>
+                <td width="33%">
+                    <div class="label">CLIENTE</div>
+                    <div class="value">{{ $venta->cliente->persona->razon_social }}</div>
+                    <div style="font-size:9px;">{{ $venta->cliente->persona->tipo_documento }} {{ $venta->cliente->persona->numero_documento }}</div>
+                </td>
+                <td width="33%">
+                    <div class="label">SUCURSAL</div>
+                    <div class="value">{{ $venta->almacen->nombre ?? 'N/A' }}</div>
+                </td>
+                <td width="33%">
+                    <div class="label">COMPROBANTE</div>
+                    <div class="value">{{ $venta->comprobante->tipo_comprobante ?? 'N/A' }}</div>
+                </td>
             </tr>
             <tr>
-                <td colspan="4" class="text-right"><strong>DESCUENTO Bs.</strong></td>
-                <td class="text-right">- Bs. {{ number_format($venta->descuento, 2) }}</td>
+                <td>
+                    <div class="label" style="margin-top:5px;">VENDEDOR</div>
+                    <div class="value">{{ $venta->user->name ?? 'Sistema' }}</div>
+                </td>
+                <td colspan="2">
+                     <div class="label" style="margin-top:5px;">ESTADO</div>
+                     <div class="value">{{ $venta->estado ? 'ACTIVA' : 'ANULADA' }}</div>
+                </td>
+            </tr>
+            @if($venta->nota_personal || $venta->nota_cliente)
+            <tr>
+                <td colspan="3">
+                    <div class="label" style="margin-top:5px;">NOTAS</div>
+                    @if($venta->nota_personal)
+                    <div class="value" style="font-style:italic;">Interna: {{ $venta->nota_personal }}</div>
+                    @endif
+                    @if($venta->nota_cliente)
+                    <div class="value" style="font-style:italic;">Cliente: {{ $venta->nota_cliente }}</div>
+                    @endif
+                </td>
             </tr>
             @endif
-            <tr class="total-row">
-                <td colspan="4" class="text-right"><strong>TOTAL Bs.</strong></td>
-                <td class="text-right">Bs. {{ number_format($venta->total, 2) }}</td>
-            </tr>
-        </tfoot>
-    </table>
+        </table>
+    </div>
 
-    <table style="width: 100%; margin-top: 50px; font-size: 9px; border: none; border-collapse: collapse;">
+    <!-- Detalles -->
+    <div class="section-box">
+        <div class="section-title">DETALLES DE LA VENTA</div>
+        <table class="table-details">
+            <thead>
+                <tr>
+                    <th width="5%">#</th>
+                    <th>PRODUCTO</th>
+                    <th width="10%" class="text-right">CANT.</th>
+                    <th width="15%" class="text-right">PRECIO</th>
+                    <th width="15%" class="text-right">DESC.</th>
+                    <th width="15%" class="text-right">SUBTOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($venta->detalles as $index => $detalle)
+                <tr>
+                    <td>{{ $index + 1 }}</td>
+                    <td>
+                        {{ $detalle->producto->nombre }}
+                        <br><span style="color:#777; font-size:8px;">{{ $detalle->producto->codigo }}</span>
+                    </td>
+                    <td class="text-right">{{ number_format($detalle->cantidad, 2) }}</td>
+                    <td class="text-right">{{ number_format($detalle->precio_venta, 2) }}</td>
+                    <td class="text-right">{{ number_format($detalle->descuento, 2) }}</td>
+                    <td class="text-right">{{ number_format(($detalle->cantidad * $detalle->precio_venta) - $detalle->descuento, 2) }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" class="text-right" style="padding-top:10px;"><strong>TOTAL:</strong></td>
+                    <td class="text-right" style="padding-top:10px; font-size:12px;"><strong>Bs. {{ number_format($venta->total, 2) }}</strong></td>
+                </tr>
+                <tr>
+                    <td colspan="5" class="text-right"><strong>POR COBRAR:</strong></td>
+                    <td class="text-right">Bs. {{ number_format($venta->total, 2) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Firmas -->
+    <table style="width: 100%; margin-top: 40px;">
         <tr>
-            <td style="width: 45%; text-align: center; border-top: 1px solid #000; border: none;">Entregado a (Cliente)</td>
-            <td style="width: 45%; text-align: center; border-top: 1px solid #000; border: none;">Vendedor</td>
+            <td width="40%" class="text-center">
+                <div style="border-top: 1px solid #000; margin: 0 20px; padding-top: 5px; font-size: 9px;">
+                    ENTREGUE CONFORME (Vendedor)
+                </div>
+            </td>
+            <td width="20%"></td>
+            <td width="40%" class="text-center">
+                <div style="border-top: 1px solid #000; margin: 0 20px; padding-top: 5px; font-size: 9px;">
+                    RECIBI CONFORME (Cliente)
+                </div>
+            </td>
         </tr>
     </table>
 
-    <div style="text-align: center; font-size: 8px; margin-top: 3px;">
-        {{ now()->format('d/m/Y H:i') }} - {{ $venta->comprobante->tipo_comprobante === 'Factura' ? 'Documento válido como crédito fiscal' : 'Documento no válido como factura' }}
+    <div class="footer-note">
+        Usuario: {{ auth()->user()->name }} | Fecha Impresión: {{ now()->format('d/m/Y H:i:s') }}
+        <br>{{ $venta->comprobante->tipo_comprobante === 'Factura' ? 'Documento válido como crédito fiscal' : 'Documento no válido como factura' }}
     </div>
 </body>
-
 </html>

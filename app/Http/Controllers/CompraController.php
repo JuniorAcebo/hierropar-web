@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCompraRequest;
+use App\Http\Requests\UpdateCompraRequest;
 use App\Models\Compra;
 use App\Models\Producto;
 use App\Models\Comprobante;
@@ -24,7 +25,9 @@ class CompraController extends Controller
         $compra = Compra::with([
             'comprobante',
             'proveedor.persona',
-            'detalles.producto'
+            'detalles.producto',
+            'almacen',
+            'user'
         ])->findOrFail($id);
 
         $pdf = Pdf::loadView('compra.pdf', compact('compra'))
@@ -61,6 +64,7 @@ class CompraController extends Controller
         return view('compra.index', compact('compras'));
     }
 
+
     public function create()
     {
         $proveedores = Proveedor::with('persona')->get();
@@ -68,22 +72,16 @@ class CompraController extends Controller
         $almacenes = \App\Models\Almacen::where('estado', 1)->get();
         $productos = Producto::where('estado', 1)->get();
         
-        return view('compra.create', compact('proveedores', 'comprobantes', 'almacenes', 'productos'));
+        // Generar número de comprobante automático
+        $ultimaCompra = Compra::latest('id')->first();
+        $nextNumber = $ultimaCompra ? (intval($ultimaCompra->numero_comprobante) + 1) : 1;
+        $nextComprobanteNumber = str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
+        
+        return view('compra.create', compact('proveedores', 'comprobantes', 'almacenes', 'productos', 'nextComprobanteNumber'));
     }
 
-    public function store(Request $request)
+    public function store(StoreCompraRequest $request)
     {
-        $request->validate([
-            'proveedor_id' => 'required|exists:proveedores,id',
-            'almacen_id' => 'required|exists:almacenes,id',
-            'comprobante_id' => 'required|exists:comprobantes,id',
-            'numero_comprobante' => 'required|max:20',
-            'arrayidproducto' => 'required|array',
-            'arraycantidad' => 'required|array',
-            'arraypreciocompra' => 'required|array',
-            'arrayprecioventa' => 'required|array',
-        ]);
-
         try {
             DB::beginTransaction();
 
@@ -173,34 +171,30 @@ class CompraController extends Controller
         $proveedores = Proveedor::with('persona')->get();
         $comprobantes = Comprobante::all();
         $almacenes = \App\Models\Almacen::where('estado', 1)->get();
-        $productos = Producto::where('estado', 1)->get();
+        
+        // Cargamos los productos con el stock total para mostrar en el select
+        $productos = Producto::withSum('inventarios as stock', 'stock')
+            ->where('estado', 1)
+            ->get();
 
         return view('compra.edit', compact('compra', 'proveedores', 'comprobantes', 'almacenes', 'productos', 'productosInfo'));
     }
 
-    public function update(Request $request, Compra $compra)
+    public function update(UpdateCompraRequest $request, Compra $compra)
     {
-        $request->validate([
-            'proveedor_id' => 'required|exists:proveedores,id',
-            'almacen_id' => 'required|exists:almacenes,id',
-            'comprobante_id' => 'required|exists:comprobantes,id',
-            'numero_comprobante' => 'required|max:20',
-            'arrayidproducto' => 'required|array',
-            'arraycantidad' => 'required|array',
-            'arraypreciocompra' => 'required|array',
-            'arrayprecioventa' => 'required|array',
-        ]);
-
         try {
             DB::beginTransaction();
 
-            // 1. Revertir stock actual antes de borrar detalles viejos
+            // 1. Validar que se pueda revertir antes de hacer nada
+            $this->compraService->validarReversion($compra);
+
+            // 2. Revertir stock actual
             $this->compraService->revertirStock($compra);
 
-            // 2. Borrar detalles viejos
+            // 3. Borrar detalles viejos
             $compra->detalles()->delete();
 
-            // 3. Actualizar datos básicos
+            // 4. Actualizar datos básicos
             $compra->update([
                 'fecha_hora' => $request->fecha_hora ?? $compra->fecha_hora,
                 'numero_comprobante' => $request->numero_comprobante,
@@ -214,7 +208,7 @@ class CompraController extends Controller
                 'almacen_id' => $request->almacen_id,
             ]);
 
-            // 4. Crear nuevos detalles
+            // 5. Crear nuevos detalles
             $total = 0;
             foreach ($request->arrayidproducto as $index => $productoId) {
                 $cantidad = $request->arraycantidad[$index];
@@ -233,11 +227,9 @@ class CompraController extends Controller
 
             $compra->update(['total' => $total]);
 
-            // 5. Validar que el nuevo stock no sea negativo (si hubo reducciones)
-            // Aunque al ser compra usualmente aumenta stock, si se reduce y ya se vendió podría fallar.
-            $this->compraService->validarReversion($compra); // Aquí se usa para validar que el stock final sea coherente
-
             // 6. Procesar entrada de stock nuevo
+            // IMPORTANTE: Recargar la relación detalles porque tiene en caché los viejos (que ya se borraron)
+            $compra->refresh(); 
             $this->compraService->procesarEntradaStock($compra);
 
             DB::commit();

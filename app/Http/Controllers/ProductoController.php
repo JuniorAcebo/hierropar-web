@@ -36,34 +36,75 @@ class ProductoController extends Controller
     {
         $busqueda = $request->get('busqueda');
         $perPage  = $request->get('per_page', 10);
+        $sort      = $request->get('sort', 'nombre');
+        $direction = $request->get('direction', 'asc');
 
-        if (!in_array($perPage, [5,10,15,20,25])) {
-            $perPage = 10;
-        }
+        // Validar per_page y direction
+        if (!in_array($perPage, [5, 10, 15, 20, 25])) $perPage = 10;
+        if (!in_array($direction, ['asc', 'desc'])) $direction = 'asc';
 
         $query = Producto::with([
             'marca',
             'categoria',
             'tipounidad',
             'inventarios.almacen'
-        ]);
+        ])->withSum('inventarios as stock_total', 'stock');
 
+        // Búsqueda
         if ($busqueda) {
             $query->where(function ($q) use ($busqueda) {
                 $q->where('codigo', 'like', "%{$busqueda}%")
-                ->orWhere('nombre', 'like', "%{$busqueda}%")
-                ->orWhere('descripcion', 'like', "%{$busqueda}%");
+                  ->orWhere('nombre', 'like', "%{$busqueda}%")
+                  ->orWhere('descripcion', 'like', "%{$busqueda}%");
             });
         }
 
-        $productos = $query->latest()->paginate($perPage);
+        // Ordenamiento
+        switch ($sort) {
+            case 'categoria':
+                $query->join('categorias', 'productos.categoria_id', '=', 'categorias.id')
+                      ->select('productos.*') // Evitar colisión de IDs
+                      ->orderBy('categorias.nombre', $direction);
+                break;
+            case 'stock_total':
+                $query->orderBy('stock_total', $direction);
+                break;
+            case 'precio_venta':
+            case 'nombre':
+            case 'estado':
+                $query->orderBy($sort, $direction);
+                break;
+            default:
+                $query->latest();
+                break;
+        }
+
+        $productos = $query->paginate($perPage);
+
+        // Estadísticas para el footer (Totales globales de toda la tabla productos)
+        $totalStockGlobal = DB::table('inventario_almacenes')->sum('stock');
+        $productosActivos = Producto::where('estado', 1)->count();
+        
+        // Conteo de bajo stock global (suma de inventarios por producto <= 10)
+        $bajoStockCount = Producto::join('inventario_almacenes', 'productos.id', '=', 'inventario_almacenes.producto_id')
+            ->select('productos.id')
+            ->groupBy('productos.id')
+            ->havingRaw('SUM(inventario_almacenes.stock) <= 10')
+            ->get()
+            ->count();
+
         $almacenes = Almacen::where('estado', true)->get();
 
+        if ($request->ajax()) {
+            return view('producto.index', compact(
+                'productos', 'busqueda', 'perPage', 'almacenes', 
+                'sort', 'direction', 'totalStockGlobal', 'productosActivos', 'bajoStockCount'
+            ));
+        }
+
         return view('producto.index', compact(
-            'productos',
-            'busqueda',
-            'perPage',
-            'almacenes'
+            'productos', 'busqueda', 'perPage', 'almacenes', 
+            'sort', 'direction', 'totalStockGlobal', 'productosActivos', 'bajoStockCount'
         ));
     }
  
@@ -224,10 +265,66 @@ class ProductoController extends Controller
             return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
         }
     }
-    public function historialAjustes()
+    public function historialAjustes(Request $request)
     {
-        $ajustes = \App\Models\AjusteStock::with(['producto', 'almacen', 'user'])->latest()->paginate(15);
-        return view('producto.historial_ajustes', compact('ajustes'));
+        $busqueda = $request->get('busqueda');
+        $perPage  = $request->get('per_page', 10);
+        $sort      = $request->get('sort', 'created_at');
+        $direction = $request->get('direction', 'desc');
+
+        if (!in_array($perPage, [5, 10, 15, 20, 25])) $perPage = 10;
+        if (!in_array($direction, ['asc', 'desc'])) $direction = 'desc';
+
+        $query = \App\Models\AjusteStock::with(['producto', 'almacen', 'user']);
+
+        // Búsqueda por producto
+        if ($busqueda) {
+            $query->whereHas('producto', function($q) use ($busqueda) {
+                $q->where('nombre', 'like', "%{$busqueda}%")
+                  ->orWhere('codigo', 'like', "%{$busqueda}%");
+            });
+        }
+
+        // Ordenamiento
+        switch ($sort) {
+            case 'producto':
+                $query->join('productos', 'ajuste_stocks.producto_id', '=', 'productos.id')
+                      ->select('ajuste_stocks.*')
+                      ->orderBy('productos.nombre', $direction);
+                break;
+            case 'usuario':
+                $query->join('users', 'ajuste_stocks.user_id', '=', 'users.id')
+                      ->select('ajuste_stocks.*')
+                      ->orderBy('users.name', $direction);
+                break;
+            case 'almacen':
+                $query->join('almacenes', 'ajuste_stocks.almacen_id', '=', 'almacenes.id')
+                      ->select('ajuste_stocks.*')
+                      ->orderBy('almacenes.nombre', $direction);
+                break;
+            default:
+                $query->orderBy($sort, $direction);
+                break;
+        }
+
+        $ajustes = $query->paginate($perPage);
+
+        // Estadísticas para el footer
+        $totalAjustes = \App\Models\AjusteStock::count();
+        $ajustesPositivos = \App\Models\AjusteStock::whereRaw('cantidad_nueva > cantidad_anterior')->count();
+        $ajustesNegativos = \App\Models\AjusteStock::whereRaw('cantidad_nueva < cantidad_anterior')->count();
+
+        if ($request->ajax()) {
+            return view('producto.historial_ajustes', compact(
+                'ajustes', 'busqueda', 'perPage', 'sort', 'direction', 
+                'totalAjustes', 'ajustesPositivos', 'ajustesNegativos'
+            ));
+        }
+
+        return view('producto.historial_ajustes', compact(
+            'ajustes', 'busqueda', 'perPage', 'sort', 'direction', 
+            'totalAjustes', 'ajustesPositivos', 'ajustesNegativos'
+        ));
     }
 
     public function createAjuste()

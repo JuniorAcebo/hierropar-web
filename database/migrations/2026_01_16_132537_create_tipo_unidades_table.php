@@ -13,6 +13,7 @@ return new class extends Migration
             $table->id();
             $table->string('nombre', 80);
             $table->string('descripcion', 255)->nullable();
+            $table->boolean('maneja_stock')->default(true);
             $table->timestamps();
         });
     }

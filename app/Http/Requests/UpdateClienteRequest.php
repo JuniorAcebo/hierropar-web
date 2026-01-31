@@ -25,6 +25,7 @@ class UpdateClienteRequest extends FormRequest
         return [
             'razon_social' => 'required|max:80',
             'direccion' => 'required|max:80',
+            'telefono' => 'required|max:20',
             'documento_id' => 'required|integer|exists:documentos,id',
             'numero_documento' => 'required|max:20|unique:personas,numero_documento,'.$cliente->persona->id
         ];

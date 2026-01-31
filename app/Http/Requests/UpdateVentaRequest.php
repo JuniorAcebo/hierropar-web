@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreCompraRequest extends FormRequest
+class UpdateVentaRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -13,13 +13,14 @@ class StoreCompraRequest extends FormRequest
 
     public function rules(): array
     {
+        $ventaId = $this->route('venta') ? $this->route('venta')->id : $this->route('id');
+        
         return [
             // Datos generales
             'fecha_hora' => 'required|date|before_or_equal:now',
-            'numero_comprobante' => 'required|string|max:255|unique:compras,numero_comprobante',
+            'numero_comprobante' => 'required|string|max:255|unique:ventas,numero_comprobante,' . $ventaId,
             'total' => 'required|numeric|min:0.01',
-            'proveedor_id' => 'required|exists:proveedores,id',
-            'user_id' => 'required|exists:users,id',
+            'cliente_id' => 'required|exists:clientes,id',
             'comprobante_id' => 'required|exists:comprobantes,id',
             'almacen_id' => 'required|exists:almacenes,id',
             
@@ -28,10 +29,10 @@ class StoreCompraRequest extends FormRequest
             'arrayidproducto.*' => 'required|integer|exists:productos,id',
             'arraycantidad' => 'required|array|min:1|size:' . count($this->arrayidproducto ?? []),
             'arraycantidad.*' => 'required|numeric|min:0.001|max:999999',
-            'arraypreciocompra' => 'required|array|min:1|size:' . count($this->arrayidproducto ?? []),
-            'arraypreciocompra.*' => 'required|numeric|min:0.01|max:999999',
             'arrayprecioventa' => 'required|array|min:1|size:' . count($this->arrayidproducto ?? []),
             'arrayprecioventa.*' => 'required|numeric|min:0.01|max:999999',
+            'arraydescuento' => 'nullable|array|size:' . count($this->arrayidproducto ?? []),
+            'arraydescuento.*' => 'nullable|numeric|min:0|max:999999',
         ];
     }
 
@@ -43,14 +44,14 @@ class StoreCompraRequest extends FormRequest
             'fecha_hora.before_or_equal' => 'La fecha no puede ser futura',
             'numero_comprobante.unique' => 'Este número de comprobante ya existe',
             'total.min' => 'El total debe ser mayor a 0',
-            'proveedor_id.required' => 'Debe seleccionar un proveedor',
-            'proveedor_id.exists' => 'El proveedor seleccionado no existe',
+            'cliente_id.required' => 'Debe seleccionar un cliente',
+            'cliente_id.exists' => 'El cliente seleccionado no existe',
             'almacen_id.required' => 'Debe seleccionar una sucursal/almacén',
             'almacen_id.exists' => 'La sucursal seleccionada no existe',
             'comprobante_id.required' => 'Debe seleccionar un tipo de comprobante',
             
             // Productos
-            'arrayidproducto.required' => 'Debe agregar al menos un producto a la compra',
+            'arrayidproducto.required' => 'Debe agregar al menos un producto a la venta',
             'arrayidproducto.min' => 'Debe agregar al menos un producto',
             'arrayidproducto.*.exists' => 'Uno de los productos seleccionados no existe',
             
@@ -60,17 +61,15 @@ class StoreCompraRequest extends FormRequest
             'arraycantidad.*.min' => 'La cantidad mínima es 0.001',
             'arraycantidad.*.max' => 'La cantidad es demasiado grande',
             
-            // Precios de compra
-            'arraypreciocompra.required' => 'Los precios de compra son obligatorios',
-            'arraypreciocompra.size' => 'El número de precios de compra no coincide con los productos',
-            'arraypreciocompra.*.min' => 'El precio de compra mínimo es 0.01',
-            'arraypreciocompra.*.max' => 'El precio de compra es demasiado grande',
-            
-            // Precios de venta
+            // Precios
             'arrayprecioventa.required' => 'Los precios de venta son obligatorios',
-            'arrayprecioventa.size' => 'El número de precios de venta no coincide con los productos',
+            'arrayprecioventa.size' => 'El número de precios no coincide con los productos',
             'arrayprecioventa.*.min' => 'El precio de venta mínimo es 0.01',
-            'arrayprecioventa.*.max' => 'El precio de venta es demasiado grande',
+            'arrayprecioventa.*.max' => 'El precio es demasiado grande',
+            
+            // Descuentos
+            'arraydescuento.*.min' => 'El descuento no puede ser negativo',
+            'arraydescuento.*.max' => 'El descuento es demasiado grande',
         ];
     }
 
@@ -79,8 +78,8 @@ class StoreCompraRequest extends FormRequest
         // Convertir valores a números y limpiar
         $this->merge([
             'arraycantidad' => array_map(fn($v) => floatval($v ?? 0), $this->arraycantidad ?? []),
-            'arraypreciocompra' => array_map(fn($v) => floatval($v ?? 0), $this->arraypreciocompra ?? []),
             'arrayprecioventa' => array_map(fn($v) => floatval($v ?? 0), $this->arrayprecioventa ?? []),
+            'arraydescuento' => array_map(fn($v) => floatval($v ?? 0), $this->arraydescuento ?? []),
             'total' => floatval($this->total ?? 0)
         ]);
     }
@@ -88,16 +87,19 @@ class StoreCompraRequest extends FormRequest
     public function withValidator($validator)
     {
         $validator->after(function ($validator) {
-            // Validar que el precio de venta sea mayor al precio de compra
+            // Validar que el descuento no sea mayor al subtotal
             if ($this->arrayidproducto) {
                 foreach ($this->arrayidproducto as $index => $productoId) {
-                    $precioCompra = $this->arraypreciocompra[$index] ?? 0;
-                    $precioVenta = $this->arrayprecioventa[$index] ?? 0;
+                    $cantidad = $this->arraycantidad[$index] ?? 0;
+                    $precio = $this->arrayprecioventa[$index] ?? 0;
+                    $descuento = $this->arraydescuento[$index] ?? 0;
                     
-                    if ($precioVenta < $precioCompra) {
+                    $subtotal = $cantidad * $precio;
+                    
+                    if ($descuento > $subtotal) {
                         $validator->errors()->add(
-                            "arrayprecioventa.{$index}", 
-                            "El precio de venta debe ser mayor o igual al precio de compra"
+                            "arraydescuento.{$index}", 
+                            "El descuento no puede ser mayor al subtotal del producto"
                         );
                     }
                 }
