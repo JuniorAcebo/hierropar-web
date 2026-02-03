@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ProductosExport;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ProductoController extends Controller
 {
@@ -371,5 +374,52 @@ class ProductoController extends Controller
         return response()->json([
             'stock' => $inventario ? $inventario->stock : 0
         ]);
+    }
+    public function exportExcel(Request $request)
+    {
+        try {
+            $productIds = $request->input('product_ids', []);
+            
+            if (!empty($productIds)) {
+                $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
+                    ->withSum('inventarios as stock_total', 'stock')
+                    ->whereIn('id', $productIds)
+                    ->get();
+            } else {
+                $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
+                    ->withSum('inventarios as stock_total', 'stock')
+                    ->get();
+            }
+            return Excel::download(new ProductosExport($productos), 'productos.xlsx');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al exportar productos: ' . $e->getMessage());
+        }
+    }
+
+    public function exportPdf(Request $request)
+    {
+        try {
+            $productIds = $request->input('product_ids', []);
+            
+            if (!empty($productIds)) {
+                $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
+                    ->withSum('inventarios as stock_total', 'stock')
+                    ->whereIn('id', $productIds)
+                    ->get();
+            } else {
+                $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
+                    ->withSum('inventarios as stock_total', 'stock')
+                    ->get();
+            }
+
+            $pdf = Pdf::loadView('producto.pdf', compact('productos'))
+                ->setPaper('a4', 'landscape');
+
+            return $pdf->download('reporte-productos.pdf');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al exportar PDF: ' . $e->getMessage());
+        }
     }
 }

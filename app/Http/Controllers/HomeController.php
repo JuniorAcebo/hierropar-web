@@ -26,10 +26,9 @@ class HomeController extends Controller
         }
 
         // 1. Obtener métricas de flujo de caja (Ventas vs Compras)
-        // Esto reemplaza a getMonthlyTotals y getSalesVsPurchases combinados
         $flujoCaja = $this->getCashFlowMetrics();
 
-        // 2. Obtener Top Productos
+        // 2. Obtener Top Productos (Basado en los más vendidos, no en stock)
         $topProductos = $this->getTopProducts();
 
         // 3. Obtener Métricas Generales (Cards superiores)
@@ -39,10 +38,10 @@ class HomeController extends Controller
         $productosBajoStock = $this->getLowStockProducts();
 
         return view('panel.index', [
-            // Datos para Gráficos (Arrays simples [100, 200, ...])
+            // Datos para Gráficos
             'mesesVentas'     => $flujoCaja['ventas'],
             'mesesCompras'    => $flujoCaja['compras'],
-            'labelsMeses'     => $flujoCaja['labels'], // Nombres: 'Enero', 'Febrero'...
+            'labelsMeses'     => $flujoCaja['labels'],
 
             // Totales Anuales
             'totalVentas'     => $flujoCaja['total_anual_ventas'],
@@ -59,39 +58,31 @@ class HomeController extends Controller
         ]);
     }
 
-    /**
-     * Unifica la lógica de Ventas vs Compras para optimizar consultas.
-     * Retorna arrays listos para Chart.js y totales calculados.
-     */
     private function getCashFlowMetrics(): array
     {
         $currentYear = Carbon::now()->year;
 
-        // Ventas por mes
-        $ventasPorMes = Venta::with('detalles')
-            ->whereYear('created_at', $currentYear)
-            ->get()
-            ->groupBy(function($venta) {
-                return Carbon::parse($venta->created_at)->month;
-            })
-            ->map(function($ventas) {
-                return $ventas->sum(function($venta) {
-                    return $venta->detalles->sum('precio_total');
-                });
-            });
+        // Ventas por mes (Usando campo total de la tabla ventas para mayor precisión)
+        $ventasPorMes = Venta::whereYear('fecha_hora', $currentYear)
+            ->where('estado', 1)
+            ->select(
+                DB::raw('MONTH(fecha_hora) as mes'),
+                DB::raw('SUM(total) as total')
+            )
+            ->groupBy('mes')
+            ->pluck('total', 'mes')
+            ->toArray();
 
         // Compras por mes
-        $comprasPorMes = Compra::with('detalles')
-            ->whereYear('created_at', $currentYear)
-            ->get()
-            ->groupBy(function($compra) {
-                return Carbon::parse($compra->created_at)->month;
-            })
-            ->map(function($compras) {
-                return $compras->sum(function($compra) {
-                    return $compra->detalles->sum('precio_total');
-                });
-            });
+        $comprasPorMes = Compra::whereYear('fecha_hora', $currentYear)
+            ->where('estado', 1)
+            ->select(
+                DB::raw('MONTH(fecha_hora) as mes'),
+                DB::raw('SUM(total) as total')
+            )
+            ->groupBy('mes')
+            ->pluck('total', 'mes')
+            ->toArray();
 
         $data = [
             'ventas' => [],
@@ -102,8 +93,8 @@ class HomeController extends Controller
         ];
 
         for ($i = 1; $i <= 12; $i++) {
-            $ventaMes  = $ventasPorMes[$i] ?? 0;
-            $compraMes = $comprasPorMes[$i] ?? 0;
+            $ventaMes  = (float)($ventasPorMes[$i] ?? 0);
+            $compraMes = (float)($comprasPorMes[$i] ?? 0);
 
             $data['ventas'][] = $ventaMes;
             $data['compras'][] = $compraMes;
@@ -120,38 +111,37 @@ class HomeController extends Controller
 
     private function getTopProducts(): array
     {
-        // Sumamos el stock de cada producto en todos los almacenes
-        $productos = Producto::select('productos.nombre', DB::raw('SUM(inventario_almacenes.stock) as total_stock'))
-            ->join('inventario_almacenes', 'productos.id', '=', 'inventario_almacenes.producto_id')
+        // Productos más vendidos (Top 5)
+        $productos = DB::table('detalle_ventas')
+            ->join('productos', 'detalle_ventas.producto_id', '=', 'productos.id')
+            ->join('ventas', 'detalle_ventas.venta_id', '=', 'ventas.id')
+            ->where('ventas.estado', 1)
+            ->select('productos.nombre', DB::raw('SUM(detalle_ventas.cantidad) as total_vendido'))
             ->groupBy('productos.id', 'productos.nombre')
-            ->orderByDesc('total_stock')
+            ->orderByDesc('total_vendido')
             ->take(5)
             ->get();
 
         return [
             'nombres' => $productos->pluck('nombre')->toArray(),
-            'cantidades' => $productos->pluck('total_stock')->toArray(),
+            'cantidades' => $productos->pluck('total_vendido')->toArray(),
         ];
     }
 
-
     private function getLowStockProducts()
     {
-        // Sumamos stock de todos los almacenes por producto
-        $productos = Producto::select(
+        return Producto::select(
                 'productos.nombre',
                 'productos.precio_compra',
                 'productos.precio_venta',
                 DB::raw('SUM(inventario_almacenes.stock) as total_stock')
             )
-            ->join('inventario_almacenes', 'productos.id', '=', 'inventario_almacenes.producto_id')
+            ->leftJoin('inventario_almacenes', 'productos.id', '=', 'inventario_almacenes.producto_id')
             ->groupBy('productos.id', 'productos.nombre', 'productos.precio_compra', 'productos.precio_venta')
-            ->having('total_stock', '<', 10) // productos con stock menor a 10
-            ->orderBy('total_stock', 'asc')  // los más críticos primero
+            ->havingRaw('COALESCE(SUM(inventario_almacenes.stock), 0) < 10')
+            ->orderBy('total_stock', 'asc')
             ->take(10)
             ->get();
-
-        return $productos;
     }
 
     private function getGeneralMetrics(): array
@@ -159,30 +149,26 @@ class HomeController extends Controller
         $today = Carbon::today();
 
         return [
-            // MÉTRICAS GLOBALES
             'totalAlmacenes'      => Almacen::count(),
             'totalCategorias'     => Categoria::count(),
             'totalClientes'       => Cliente::count(),
-            'totalCompras'        => Compra::count(),
-            'totalVentas'         => Venta::count(),
+            'totalCompras'        => Compra::where('estado', 1)->count(),
+            'totalVentas'         => Venta::where('estado', 1)->count(),
             'totalGrupoClientes'  => GrupoCliente::count(),
             'totalMarcas'         => Marca::count(),
-            'totalProductos'      => Producto::count(),
+            'totalProductos'      => Producto::where('estado', 1)->count(),
             'totalProveedores'    => Proveedor::count(),
             'totalTraslados'      => Traslado::count(),
             'totalUsuarios'       => User::count(),
 
-            // MÉTRICAS DEL DÍA
-            'ventasHoy' => Venta::with('detalles')
-                ->whereDate('created_at', $today)
-                ->get()
-                ->sum(fn($venta) => $venta->detalles->sum('precio_total')),
+            // MÉTRICAS DEL DÍA (Basadas en el campo 'total' ya calculado)
+            'ventasHoy' => Venta::where('estado', 1)
+                ->whereDate('fecha_hora', $today)
+                ->sum('total'),
 
-            'comprasHoy' => Compra::with('detalles')
-                ->whereDate('created_at', $today)
-                ->get()
-                ->sum(fn($compra) => $compra->detalles->sum('precio_total')),
+            'comprasHoy' => Compra::where('estado', 1)
+                ->whereDate('fecha_hora', $today)
+                ->sum('total'),
         ];
     }
-
 }

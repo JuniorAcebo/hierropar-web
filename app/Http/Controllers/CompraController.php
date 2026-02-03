@@ -185,8 +185,17 @@ class CompraController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Validar que se pueda revertir antes de hacer nada
-            $this->compraService->validarReversion($compra);
+            // 1. Validar de forma inteligente: Si aumentas stock (de 5 a 6), no dar error aunque tengas 0.
+            $nuevosDetalles = [];
+            foreach ($request->arrayidproducto as $index => $pid) {
+                if ($pid) {
+                    $nuevosDetalles[] = [
+                        'producto_id' => $pid,
+                        'cantidad' => $request->arraycantidad[$index] ?? 0
+                    ];
+                }
+            }
+            $this->compraService->validarEdicionDinamica($compra, $nuevosDetalles);
 
             // 2. Revertir stock actual
             $this->compraService->revertirStock($compra);
@@ -210,10 +219,17 @@ class CompraController extends Controller
 
             // 5. Crear nuevos detalles
             $total = 0;
-            foreach ($request->arrayidproducto as $index => $productoId) {
-                $cantidad = $request->arraycantidad[$index];
-                $precioCompra = $request->arraypreciocompra[$index];
-                $precioVenta = $request->arrayprecioventa[$index];
+            $arrayIds = $request->arrayidproducto ?? [];
+            $arrayCantidades = $request->arraycantidad ?? [];
+            $arrayPreciosCompra = $request->arraypreciocompra ?? [];
+            $arrayPreciosVenta = $request->arrayprecioventa ?? [];
+
+            foreach ($arrayIds as $index => $productoId) {
+                if (empty($productoId)) continue;
+
+                $cantidad = $arrayCantidades[$index] ?? 0;
+                $precioCompra = $arrayPreciosCompra[$index] ?? 0;
+                $precioVenta = $arrayPreciosVenta[$index] ?? 0;
 
                 $compra->detalles()->create([
                     'producto_id' => $productoId,

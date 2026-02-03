@@ -124,13 +124,13 @@ class VentaController extends Controller
     {
         try {
             DB::beginTransaction();
-            
+
             // Validar stock de forma masiva
             $items = [];
             foreach ($request->arrayidproducto as $index => $productoId) {
                 $items[] = [
                     'producto_id' => $productoId,
-                    'cantidad' => $request->arraycantidad[$index]
+                    'cantidad' => floatval($request->arraycantidad[$index] ?? 0)
                 ];
             }
             $this->ventaService->validarStockDisponible($items, $request->almacen_id);
@@ -151,9 +151,13 @@ class VentaController extends Controller
 
             $total = 0;
             foreach ($request->arrayidproducto as $index => $productoId) {
-                $cantidad = $request->arraycantidad[$index];
-                $precioVenta = $request->arrayprecioventa[$index];
-                $descuento = $request->arraydescuento[$index] ?? 0;
+                $cantidad = floatval($request->arraycantidad[$index] ?? 0);
+                $precioVenta = floatval($request->arrayprecioventa[$index] ?? 0);
+                $descuento = floatval($request->arraydescuento[$index] ?? 0);
+
+                if (empty($productoId) || $cantidad <= 0 || $precioVenta <= 0) {
+                    continue;
+                }
 
                 $venta->detalles()->create([
                     'producto_id' => $productoId,
@@ -207,9 +211,9 @@ class VentaController extends Controller
 
         $almacenes = \App\Models\Almacen::where('estado', 1)->get();
         $comprobantes = Comprobante::all();
-        
+
         $productos = Producto::where('estado', 1)->get();
-        
+
         $clientes = Cliente::with(['persona' => function ($query) {
             $query->where('estado', 1);
         }])->get();
@@ -247,7 +251,7 @@ class VentaController extends Controller
             foreach ($request->arrayidproducto as $index => $productoId) {
                 $items[] = [
                     'producto_id' => $productoId,
-                    'cantidad' => $request->arraycantidad[$index]
+                    'cantidad' => floatval($request->arraycantidad[$index] ?? 0)
                 ];
             }
             $this->ventaService->validarStockDisponible($items, $request->almacen_id);
@@ -255,22 +259,26 @@ class VentaController extends Controller
             // 5. Crear nuevos detalles
             $total = 0;
             foreach ($request->arrayidproducto as $index => $productoId) {
-                $cantidad = $request->arraycantidad[$index];
-                $precioVenta = $request->arrayprecioventa[$index];
-                $descuento = $request->arraydescuento[$index] ?? 0;
+                $cantidad = floatval($request->arraycantidad[$index] ?? 0);
+                $precioVenta = floatval($request->arrayprecioventa[$index] ?? 0);
+                $descuento = floatval($request->arraydescuento[$index] ?? 0);
 
+                if (empty($productoId) || $cantidad <= 0 || $precioVenta <= 0) {
+                    continue;
+                }
                 $venta->detalles()->create([
                     'producto_id' => $productoId,
                     'cantidad' => $cantidad,
                     'precio_venta' => $precioVenta,
                     'descuento' => $descuento
                 ]);
-                
+
                $total += ($cantidad * $precioVenta) - $descuento;
             }
             $venta->update(['total' => $total]);
 
-            // 6. Salida stock nuevamente
+            // 6. Salida stock nuevamente (asegurarse de usar detalles recién creados)
+            $venta->refresh();
             $this->ventaService->procesarSalidaStock($venta);
 
             DB::commit();
@@ -314,9 +322,9 @@ class VentaController extends Controller
     {
         try {
             $venta = Venta::findOrFail($id);
-            
+
             $estado = $request->input('estado_pago', 'pagado');
-            
+
             $venta->update(['estado_pago' => $estado]);
 
             return response()->json([
@@ -336,9 +344,9 @@ class VentaController extends Controller
     {
         try {
             $venta = Venta::findOrFail($id);
-            
+
             $estado = $request->input('estado_entrega', 'entregado');
-            
+
             $venta->update(['estado_entrega' => $estado]);
 
             return response()->json([

@@ -13,8 +13,14 @@ class UpdateVentaRequest extends FormRequest
 
     public function rules(): array
     {
-        $ventaId = $this->route('venta') ? $this->route('venta')->id : $this->route('id');
-        
+        // Obtener id seguro del parámetro de la ruta: puede venir como modelo (objeto) o como id (string/int)
+        $routeVenta = $this->route('venta') ?? $this->route('id');
+        if (is_object($routeVenta) && property_exists($routeVenta, 'id')) {
+            $ventaId = $routeVenta->id;
+        } else {
+            $ventaId = is_numeric($routeVenta) ? (int)$routeVenta : ($routeVenta ?? null);
+        }
+
         return [
             // Datos generales
             'fecha_hora' => 'required|date|before_or_equal:now',
@@ -23,7 +29,7 @@ class UpdateVentaRequest extends FormRequest
             'cliente_id' => 'required|exists:clientes,id',
             'comprobante_id' => 'required|exists:comprobantes,id',
             'almacen_id' => 'required|exists:almacenes,id',
-            
+
             // Arrays de productos
             'arrayidproducto' => 'required|array|min:1',
             'arrayidproducto.*' => 'required|integer|exists:productos,id',
@@ -49,24 +55,24 @@ class UpdateVentaRequest extends FormRequest
             'almacen_id.required' => 'Debe seleccionar una sucursal/almacén',
             'almacen_id.exists' => 'La sucursal seleccionada no existe',
             'comprobante_id.required' => 'Debe seleccionar un tipo de comprobante',
-            
+
             // Productos
             'arrayidproducto.required' => 'Debe agregar al menos un producto a la venta',
             'arrayidproducto.min' => 'Debe agregar al menos un producto',
             'arrayidproducto.*.exists' => 'Uno de los productos seleccionados no existe',
-            
+
             // Cantidades
             'arraycantidad.required' => 'Las cantidades son obligatorias',
             'arraycantidad.size' => 'El número de cantidades no coincide con los productos',
             'arraycantidad.*.min' => 'La cantidad mínima es 0.001',
             'arraycantidad.*.max' => 'La cantidad es demasiado grande',
-            
+
             // Precios
             'arrayprecioventa.required' => 'Los precios de venta son obligatorios',
             'arrayprecioventa.size' => 'El número de precios no coincide con los productos',
             'arrayprecioventa.*.min' => 'El precio de venta mínimo es 0.01',
             'arrayprecioventa.*.max' => 'El precio es demasiado grande',
-            
+
             // Descuentos
             'arraydescuento.*.min' => 'El descuento no puede ser negativo',
             'arraydescuento.*.max' => 'El descuento es demasiado grande',
@@ -75,11 +81,30 @@ class UpdateVentaRequest extends FormRequest
 
     protected function prepareForValidation()
     {
-        // Convertir valores a números y limpiar
+        // Normalizar arrays para evitar keys faltantes o índices no consecutivos
+        $arrayidproducto = array_values($this->arrayidproducto ?? []);
+
+        $rawCantidades = $this->arraycantidad ?? [];
+        $rawPreciosVenta = $this->arrayprecioventa ?? [];
+        $rawDescuentos = $this->arraydescuento ?? [];
+
+        $cantidades = [];
+        $preciosVenta = [];
+        $descuentos = [];
+
+        foreach ($arrayidproducto as $idx => $pid) {
+            if (empty($pid)) continue;
+
+            $cantidades[] = floatval($rawCantidades[$idx] ?? 0);
+            $preciosVenta[] = floatval($rawPreciosVenta[$idx] ?? 0);
+            $descuentos[] = floatval($rawDescuentos[$idx] ?? 0);
+        }
+
         $this->merge([
-            'arraycantidad' => array_map(fn($v) => floatval($v ?? 0), $this->arraycantidad ?? []),
-            'arrayprecioventa' => array_map(fn($v) => floatval($v ?? 0), $this->arrayprecioventa ?? []),
-            'arraydescuento' => array_map(fn($v) => floatval($v ?? 0), $this->arraydescuento ?? []),
+            'arrayidproducto' => $arrayidproducto,
+            'arraycantidad' => $cantidades,
+            'arrayprecioventa' => $preciosVenta,
+            'arraydescuento' => $descuentos,
             'total' => floatval($this->total ?? 0)
         ]);
     }
@@ -93,12 +118,12 @@ class UpdateVentaRequest extends FormRequest
                     $cantidad = $this->arraycantidad[$index] ?? 0;
                     $precio = $this->arrayprecioventa[$index] ?? 0;
                     $descuento = $this->arraydescuento[$index] ?? 0;
-                    
+
                     $subtotal = $cantidad * $precio;
-                    
+
                     if ($descuento > $subtotal) {
                         $validator->errors()->add(
-                            "arraydescuento.{$index}", 
+                            "arraydescuento.{$index}",
                             "El descuento no puede ser mayor al subtotal del producto"
                         );
                     }

@@ -1,76 +1,106 @@
 <?php
 
+use App\Http\Controllers\AlmacenController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\CompraController;
+use App\Http\Controllers\GrupoClientesController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LoginController;
 use App\Http\Controllers\LogoutController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\ProductoController;
-use App\Http\Controllers\TrasladoController;
-use App\Http\Controllers\AlmacenController;
-use App\Http\Controllers\GrupoClientesController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RoleController;
-use App\Http\Controllers\UserController;
 use App\Http\Controllers\TipoUnidadController;
+use App\Http\Controllers\TrasladoController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\VentaController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/',[homeController::class,'index'])->name('panel');
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
 
-    Route::get('productos/historial-ajustes', [ProductoController::class, 'historialAjustes'])->name('productos.historialAjustes');
-    Route::get('productos/crear-ajuste', [ProductoController::class, 'createAjuste'])->name('productos.createAjuste');
-    Route::post('productos/store-ajuste', [ProductoController::class, 'storeAjuste'])->name('productos.storeAjuste');
-    Route::get('/ventas/check-stock', [VentaController::class, 'checkStock'])->name('ventas.check-stock');
-    Route::put('/ventas/{venta}/estado-pago', [VentaController::class, 'actualizarEstadoPago'])->name('ventas.estado-pago');
-    Route::put('/ventas/{venta}/estado-entrega', [VentaController::class, 'actualizarEstadoEntrega'])->name('ventas.estado-entrega');
+// --- Dashboard ---
+Route::get('/', [HomeController::class, 'index'])->name('panel');
 
+// --- Autenticación ---
+Route::controller(LoginController::class)->group(function () {
+    Route::get('/login', 'index')->name('login');
+    Route::post('/login', 'login');
+});
+Route::get('/logout', [LogoutController::class, 'logout'])->name('logout');
+
+// --- Perfil de Usuario ---
+Route::resource('profile', ProfileController::class);
+
+// --- Gestión de Productos ---
+Route::prefix('productos')->name('productos.')->group(function () {
+    // Ajustes de Stock
+    Route::get('/historial-ajustes', [ProductoController::class, 'historialAjustes'])->name('historialAjustes');
+    Route::get('/crear-ajuste', [ProductoController::class, 'createAjuste'])->name('createAjuste');
+    Route::post('/store-ajuste', [ProductoController::class, 'storeAjuste'])->name('storeAjuste');
+    Route::get('/{producto}/ajuste-cantidad', [ProductoController::class, 'ajusteCantidad'])->name('ajusteCantidad');
+    Route::post('/{producto}/ajuste-cantidad', [ProductoController::class, 'updateCantidad'])->name('updateCantidad');
+    
+    // Utilidades
+    Route::get('/check-stock', [ProductoController::class, 'checkStock'])->name('checkStock');
+    Route::patch('/{producto}/estado', [ProductoController::class, 'updateEstado'])->name('updateEstado');
+    
+    // Exportación
+    Route::post('/export-excel', [ProductoController::class, 'exportExcel'])->name('export.excel');
+    Route::post('/export-pdf', [ProductoController::class, 'exportPdf'])->name('export.pdf');
+});
+
+// --- Gestión de Ventas ---
+Route::prefix('ventas')->name('ventas.')->group(function () {
+    Route::get('/check-stock', [VentaController::class, 'checkStock'])->name('check-stock');
+    Route::put('/{venta}/estado-pago', [VentaController::class, 'actualizarEstadoPago'])->name('estado-pago');
+    Route::put('/{venta}/estado-entrega', [VentaController::class, 'actualizarEstadoEntrega'])->name('estado-entrega');
+    Route::get('/pdf/{id}', [VentaController::class, 'generarPdf'])->name('pdf');
+});
+
+// --- Gestión de Compras ---
+Route::prefix('compras')->name('compras.')->group(function () {
+    Route::get('/pdf/{id}', [CompraController::class, 'generarPdf'])->name('pdf');
+});
+
+// --- Gestión de Traslados ---
+Route::prefix('traslados')->name('traslados.')->group(function () {
+    Route::patch('/{traslado}/update-estado', [TrasladoController::class, 'toggleEstado'])->name('toggleEstado');
+    Route::get('/exportar/vista', [TrasladoController::class, 'exportar'])->name('exportar');
+    Route::post('/exportar/excel', [TrasladoController::class, 'exportarExcel'])->name('exportar-excel');
+    Route::post('/exportar/pdf', [TrasladoController::class, 'exportarPdf'])->name('exportar-pdf');
+});
+
+// --- Almacenes ---
+Route::patch('/almacenes/{almacen}/estado', [AlmacenController::class, 'updateEstado'])->name('almacenes.updateEstado');
+
+// --- Recursos del Sistema ---
 Route::resources([
-    'categorias' => CategoriaController::class,
-    'marcas' => MarcaController::class,
-    'productos' => ProductoController::class,
-    'clientes' => ClienteController::class,
-    'proveedores' => ProveedorController::class,
-    'compras' => CompraController::class,
-    'ventas' => VentaController::class,
-    'users' => UserController::class,
-    'roles' => RoleController::class,
-    'profile' => ProfileController::class,
-    'traslados' => TrasladoController::class,
-    'almacenes' => AlmacenController::class,
-    'grupoClientes' => GrupoClientesController::class,], [
+    'categorias'    => CategoriaController::class,
+    'marcas'        => MarcaController::class,
+    'productos'     => ProductoController::class,
+    'clientes'      => ClienteController::class,
+    'proveedores'   => ProveedorController::class,
+    'compras'       => CompraController::class,
+    'ventas'        => VentaController::class,
+    'users'         => UserController::class,
+    'roles'         => RoleController::class,
+    'traslados'     => TrasladoController::class,
+    'almacenes'     => AlmacenController::class,
+    'grupoClientes' => GrupoClientesController::class,
+], [
     'parameters' => ['almacenes' => 'almacen']
 ]);
 
+Route::resource('tipounidades', TipoUnidadController::class)->parameters(['tipounidades' => 'tipounidad']);
 
-    Route::resource('tipounidades', TipoUnidadController::class)->parameters(['tipounidades' => 'tipounidad']);
-
-    Route::patch('productos/{producto}/estado', [ProductoController::class, 'updateEstado'])->name('productos.updateEstado');
-    Route::get('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'ajusteCantidad'])->name('productos.ajusteCantidad');
-    Route::post('productos/{producto}/ajuste-cantidad', [ProductoController::class, 'updateCantidad'])->name('productos.updateCantidad');
-    Route::get('/productos/check-stock', [ProductoController::class, 'checkStock'])->name('productos.checkStock');
-
-    Route::patch('traslados/{traslado}/update-estado', [TrasladoController::class, 'toggleEstado'])->name('traslados.toggleEstado');
-    Route::get('/traslados/exportar/vista', [TrasladoController::class, 'exportar'])->name('traslados.exportar');
-    Route::post('/traslados/exportar/excel', [TrasladoController::class, 'exportarExcel'])->name('traslados.exportar-excel');
-    Route::post('/traslados/exportar/pdf', [TrasladoController::class, 'exportarPdf'])->name('traslados.exportar-pdf');
-    Route::patch('/almacenes/{almacen}/estado', [AlmacenController::class, 'updateEstado'])->name('almacenes.updateEstado');
-
-    Route::get('/compras/pdf/{id}', [compraController::class, 'generarPdf'])->name('compras.pdf');
-    Route::get('/ventas/pdf/{id}', [ventaController::class, 'generarPdf'])->name('ventas.pdf');
-    Route::get('/login',[loginController::class,'index'])->name('login');
-    Route::post('/login',[loginController::class,'login']);
-    Route::get('/logout',[logoutController::class,'logout'])->name('logout');
-
-    Route::get('/401', function () {
-        return view('pages.401');
-    });
-    Route::get('/404', function () {
-        return view('pages.404');
-    });
-    Route::get('/500', function () {
-        return view('pages.500');
-    });
+// --- Páginas de Error ---
+Route::get('/401', fn() => view('pages.401'));
+Route::get('/404', fn() => view('pages.404'));
+Route::get('/500', fn() => view('pages.500'));

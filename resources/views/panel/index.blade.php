@@ -395,7 +395,7 @@
                             <span class="bg-purple bg-opacity-10 text-purple p-2 rounded me-3" style="color: #8b5cf6; background: rgba(139, 92, 246, 0.1);">
                                 <i class="fas fa-trophy"></i>
                             </span>
-                            <h5 class="mb-0 fw-bold fs-6">Top 5 Productos (Stock Alto)</h5>
+                            <h5 class="mb-0 fw-bold fs-6">Top 5 Productos Más Vendidos</h5>
                         </div>
                     </div>
                     <div class="card-body">
@@ -433,14 +433,14 @@
                                                 <div class="fw-semibold">{{ $producto->nombre }}</div>
                                                 <small class="text-muted">Costo: Bs/ {{ number_format($producto->precio_compra, 2) }}</small>
                                             </td>
-                                            <td class="text-center">
-                                                <span class="fw-bold {{ $producto->stock <= 5 ? 'text-danger' : 'text-warning' }}">
-                                                    {{ $producto->stock }}
+                                             <td class="text-center">
+                                                <span class="fw-bold {{ $producto->total_stock <= 5 ? 'text-danger' : 'text-warning' }}">
+                                                    {{ number_format($producto->total_stock, 2) }}
                                                 </span>
                                             </td>
                                             <td class="text-end">Bs/ {{ number_format($producto->precio_venta, 2) }}</td>
-                                            <td class="text-center">
-                                                @if ($producto->stock <= 5)
+                                             <td class="text-center">
+                                                @if ($producto->total_stock <= 5)
                                                     <span class="badge-pill badge-soft-danger">Crítico</span>
                                                 @else
                                                     <span class="badge-pill badge-soft-warning">Bajo</span>
@@ -657,8 +657,8 @@
                             },
                             tooltip: {
                                 callbacks: {
-                                    label: function(context) {
-                                        return ' Stock: ' + context.raw + ' unidades';
+                                     label: function(context) {
+                                        return ' Vendidos: ' + context.raw + ' unidades';
                                     }
                                 }
                             }

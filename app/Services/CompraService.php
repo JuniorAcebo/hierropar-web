@@ -17,11 +17,11 @@ class CompraService
     {
         return DB::transaction(function () use ($compra) {
             $almacenId = $compra->almacen_id;
-            
-            // Cargar relaciones necesarias
-            $compra->loadMissing('detalles.producto.tipounidad');
+            $compra->load('detalles.producto.tipounidad');
 
             foreach ($compra->detalles as $detalle) {
+                if (!$detalle->producto) continue;
+
                 $inventario = InventarioAlmacen::where('producto_id', $detalle->producto_id)
                     ->where('almacen_id', $almacenId)
                     ->lockForUpdate()
@@ -35,16 +35,13 @@ class CompraService
                     ]);
                 }
 
-                // Actualizar precios siempre
-                if ($detalle->producto) {
-                    $detalle->producto->update([
-                        'precio_compra' => $detalle->precio_compra,
-                        'precio_venta' => $detalle->precio_venta
-                    ]);
-                }
+                $detalle->producto->update([
+                    'precio_compra' => $detalle->precio_compra,
+                    'precio_venta' => $detalle->precio_venta
+                ]);
 
                 if ($detalle->producto->tipounidad && !$detalle->producto->tipounidad->maneja_stock) {
-                    continue; 
+                    continue;
                 }
 
                 $inventario->stock += $detalle->cantidad;
@@ -60,7 +57,6 @@ class CompraService
     {
         return DB::transaction(function () use ($compra) {
             $almacenId = $compra->almacen_id;
-            
             if (!$almacenId) return;
 
             $compra->loadMissing('detalles.producto.tipounidad');
@@ -74,7 +70,7 @@ class CompraService
                     ->first();
 
                 if ($detalle->producto->tipounidad && !$detalle->producto->tipounidad->maneja_stock) {
-                    continue; 
+                    continue;
                 }
 
                 if ($inventario) {
@@ -86,47 +82,64 @@ class CompraService
     }
 
     /**
-     * Valida si es posible revertir o editar una compra sin dejar stock negativo.
-     * Importante: Llamar ANTES de revertirStock.
+     * Valida de forma inteligente si el cambio de cantidades es posible
+     * sin dejar stock negativo, considerando la diferencia entre lo viejo y lo nuevo.
      */
-    public function validarReversion(Compra $compra)
+    public function validarEdicionDinamica(Compra $compra, array $nuevosDetalles)
     {
-        // Asegurar que las relaciones están cargadas de forma fresca para validación
         $compra->load('detalles.producto.tipounidad');
         $almacenId = $compra->almacen_id;
 
-        if (!$almacenId) {
-            Log::warning("Compra ID {$compra->id} no tiene almacen_id asignado.");
-            return; // Si no hay almacén, no podemos validar stock (o asumimos que no hay)
+        // Mapear cantidades antiguas para comparar fácilmente
+        $cantidadesAntiguas = $compra->detalles->pluck('cantidad', 'producto_id')->toArray();
+
+        foreach ($nuevosDetalles as $detalle) {
+            $productoId = $detalle['producto_id'];
+            $nuevaCant = (float) $detalle['cantidad'];
+            $viejaCant = (float) ($cantidadesAntiguas[$productoId] ?? 0);
+
+            // Si la nueva cantidad es mayor o igual, es un incremento o no hay cambio: SIEMPRE SEGURO
+            if ($nuevaCant >= $viejaCant) {
+                continue;
+            }
+
+            // Si es una reducción, la diferencia debe estar disponible en el stock actual
+            $reduccion = $viejaCant - $nuevaCant;
+
+            $inventario = InventarioAlmacen::where('producto_id', $productoId)
+                ->where('almacen_id', $almacenId)
+                ->first();
+
+            $stockActual = $inventario ? (float)$inventario->stock : 0.0;
+
+            if ($stockActual < $reduccion) {
+                $nombre = \App\Models\Producto::find($productoId)->nombre ?? 'Producto';
+                throw new Exception("No puedes reducir la cantidad de '{$nombre}' a {$nuevaCant} porque ya has vendido parte. El stock actual ({$stockActual}) no alcanza para retirar las " . number_format($reduccion, 2) . " unidades que intentas quitar.");
+            }
         }
+    }
+
+    /**
+     * Método heredado para cuando se ELIMINA la compra (reversión total)
+     */
+    public function validarReversion(Compra $compra)
+    {
+        $compra->load('detalles.producto.tipounidad');
+        $almacenId = $compra->almacen_id;
 
         foreach ($compra->detalles as $detalle) {
-            $producto = $detalle->producto;
-            
-            // Si el producto no existe o no maneja stock, no validamos
-            if (!$producto) continue;
-            
-            // Cargar tipounidad si no existe para evitar errores
-            if (!$producto->relationLoaded('tipounidad')) {
-                $producto->load('tipounidad');
+            if (!$detalle->producto || ($detalle->producto->tipounidad && !$detalle->producto->tipounidad->maneja_stock)) {
+                continue;
             }
 
-            if ($producto->tipounidad && !$producto->tipounidad->maneja_stock) {
-                continue; 
-            }
-
-            // Consultar stock actual de forma fresca
             $inventario = InventarioAlmacen::where('producto_id', $detalle->producto_id)
                 ->where('almacen_id', $almacenId)
                 ->first();
 
             $stockActual = $inventario ? (float)$inventario->stock : 0.0;
-            $cantidadReversion = (float)$detalle->cantidad;
 
-            if ($stockActual < $cantidadReversion) {
-                $msg = "Error de Inventario: No se puede modificar la compra del producto '{$producto->nombre}' porque el stock actual en el almacén ({$stockActual}) es menor a la cantidad registrada en esta compra ({$cantidadReversion}). Probablemente ya se vendió parte de esta mercadería.";
-                Log::error($msg);
-                throw new Exception($msg);
+            if ($stockActual < $detalle->cantidad) {
+                throw new Exception("No se puede eliminar la compra: El producto '{$detalle->producto->nombre}' ya no tiene stock suficiente (Stock: {$stockActual}, Necesario: {$detalle->cantidad}).");
             }
         }
     }

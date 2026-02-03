@@ -305,6 +305,179 @@
             border-bottom: 1px solid #dee2e6;
             padding: 1rem;
         }
+
+        /* NUEVOS ESTILOS PARA SELECCIÓN Y ACCIONES */
+        .selection-actions-container {
+            padding: 1rem 1.5rem;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .selected-counter {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #495057;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .selected-counter-badge {
+            background: #4e73df;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50rem;
+            font-weight: 600;
+        }
+
+        .action-buttons-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-action-primary {
+            background: #198754;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn-action-primary:hover {
+            background: #157347;
+            color: white;
+        }
+
+        .btn-action-secondary {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn-action-secondary:hover {
+            background: #5c636a;
+            color: white;
+        }
+
+        .btn-action-outline {
+            background: transparent;
+            color: #6c757d;
+            border: 1px solid #dee2e6;
+            padding: 0.5rem 1.25rem;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .btn-action-outline:hover {
+            background: #f8f9fa;
+            color: #495057;
+            border-color: #adb5bd;
+        }
+
+        /* Checkbox personalizado */
+        .checkbox-cell {
+            width: 50px;
+            padding: 0.75rem 0.5rem !important;
+            text-align: center;
+        }
+
+        .checkbox-header {
+            width: 50px;
+            padding: 0.75rem 0.5rem !important;
+            text-align: center;
+        }
+
+        .custom-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #dee2e6;
+            border-radius: 4px;
+            background: white;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+
+        .custom-checkbox:hover {
+            border-color: #adb5bd;
+        }
+
+        .custom-checkbox.checked {
+            background: #4e73df;
+            border-color: #4e73df;
+        }
+
+        .custom-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .custom-checkbox.select-all {
+            border-color: #6c757d;
+        }
+
+        .custom-checkbox.select-all.checked {
+            background: #6c757d;
+            border-color: #6c757d;
+        }
+
+        /* Fila seleccionada */
+        .custom-table tbody tr.selected {
+            background-color: #e8f4ff !important;
+        }
+
+        .custom-table tbody tr.selected td {
+            border-color: #b6d4fe;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .selection-actions-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .action-buttons-group {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
     </style>
 @endpush
 
@@ -370,11 +543,34 @@
                 </form>
             </div>
 
+            <!-- NUEVA SECCIÓN: ACCIONES DE SELECCIÓN -->
+            <div class="selection-actions-container" id="selectionActions" style="display: none;">
+                <div class="selected-counter">
+                    <span>Productos seleccionados:</span>
+                    <span class="selected-counter-badge" id="selectedCount">0</span>
+                </div>
+                <div class="action-buttons-group">
+                    <button type="button" class="btn-action-outline" id="deselectAll">
+                        <i class="fas fa-times"></i> Deseleccionar Todos
+                    </button>
+                    <button type="button" class="btn-action-secondary" id="exportExcel">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </button>
+                    <button type="button" class="btn-action-secondary" id="exportPdf" style="background: #e74c3c;">
+                        <i class="fas fa-file-pdf"></i> Exportar a PDF
+                    </button>
+                </div>
+            </div>
+
             <div class="card-body p-0" id="table-container">
                 <div class="table-responsive">
                     <table id="datatablesSimple" class="custom-table">
                         <thead>
                             <tr>
+                                <th class="checkbox-header">
+                                    <div class="custom-checkbox select-all" id="selectAll">
+                                    </div>
+                                </th>
                                 <th>
                                     <button class="sort-btn {{ $sort == 'nombre' ? 'active ' . $direction : '' }}" 
                                             data-column="nombre">
@@ -410,7 +606,10 @@
                         </thead>
                         <tbody>
                             @foreach ($productos as $item)
-                                <tr>
+                                <tr data-product-id="{{ $item->id }}">
+                                    <td class="checkbox-cell">
+                                        <div class="custom-checkbox product-checkbox" data-product-id="{{ $item->id }}"></div>
+                                    </td>
                                     <td>
                                         <div class="product-info">
                                             <div class="product-avatar">
@@ -613,7 +812,7 @@
                         
                         <tfoot>
                             <tr class="table-totals">
-                                <td colspan="2" class="text-end">
+                                <td colspan="3" class="text-end">
                                     <span class="totals-label">RESUMEN GENERAL</span>
                                 </td>
                                 <td class="text-center">
@@ -646,6 +845,61 @@
                     </div>
                 </div>
             </div>
+        <!-- Modal de Exportación Genérico -->
+        <div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content modal-content-clean">
+                    <div class="modal-header modal-header-clean">
+                        <h5 class="modal-title fs-6" id="exportModalTitle">
+                            <i class="fas fa-file-export me-2"></i> Exportar Productos
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <input type="hidden" id="exportFormat" value="excel">
+                        <div class="alert alert-success border-0 bg-success bg-opacity-10 d-flex align-items-center mb-4" id="exportAlert" style="border-radius: 12px;">
+                            <i class="fas fa-info-circle me-3 fs-5 text-success" id="exportAlertIcon"></i>
+                            <div class="small fw-medium text-success">
+                                Se exportarán <strong id="exportCountDisplay">0</strong> productos seleccionados.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="info-subtext mb-2 text-uppercase letter-spacing-05 small fw-bold">Opciones de Datos</label>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="modalIncludePrices" checked>
+                                <label class="form-check-label d-block" for="modalIncludePrices">
+                                    <span class="d-block fw-semibold small">Incluir precios</span>
+                                    <span class="extra-small text-muted">Precio de compra y venta unitario</span>
+                                </label>
+                            </div>
+
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="modalIncludeStock" checked>
+                                <label class="form-check-label d-block" for="modalIncludeStock">
+                                    <span class="d-block fw-semibold small">Incluir stock</span>
+                                    <span class="extra-small text-muted">Cantidades totales en almacenes</span>
+                                </label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="modalIncludeAllDetails" checked>
+                                <label class="form-check-label d-block" for="modalIncludeAllDetails">
+                                    <span class="d-block fw-semibold small">Incluir todos los detalles</span>
+                                    <span class="extra-small text-muted">Categorías, marcas e información técnica</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="button" class="btn btn-outline-danger btn-sm px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm px-4" id="confirmExportBtn">
+                            <i class="fas fa-download me-1"></i> Generar Archivo
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 @endsection
@@ -654,6 +908,195 @@
 <script>
     let debounceTimer;
     const tableContainer = document.getElementById('table-container');
+    let selectedProducts = new Set();
+
+    // NUEVO: Sistema de selección
+    function initializeSelectionSystem() {
+        const selectionActions = document.getElementById('selectionActions');
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const productCheckboxes = document.querySelectorAll('.product-checkbox');
+        const selectedCountElement = document.getElementById('selectedCount');
+        const deselectAllBtn = document.getElementById('deselectAll');
+        const exportExcelBtn = document.getElementById('exportExcel');
+        const exportPdfBtn = document.getElementById('exportPdf');
+
+        // Seleccionar/Deseleccionar producto individual
+        productCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('click', function() {
+                const productId = this.dataset.productId;
+                const row = this.closest('tr');
+                
+                if (this.classList.contains('checked')) {
+                    // Deseleccionar
+                    this.classList.remove('checked');
+                    row.classList.remove('selected');
+                    selectedProducts.delete(productId);
+                } else {
+                    // Seleccionar
+                    this.classList.add('checked');
+                    row.classList.add('selected');
+                    selectedProducts.add(productId);
+                }
+                
+                updateSelectionUI();
+            });
+        });
+
+        // Seleccionar todos
+        selectAllCheckbox.addEventListener('click', function() {
+            const isSelectAll = !this.classList.contains('checked');
+            
+            productCheckboxes.forEach(checkbox => {
+                const productId = checkbox.dataset.productId;
+                const row = checkbox.closest('tr');
+                
+                if (isSelectAll) {
+                    checkbox.classList.add('checked');
+                    row.classList.add('selected');
+                    selectedProducts.add(productId);
+                } else {
+                    checkbox.classList.remove('checked');
+                    row.classList.remove('selected');
+                    selectedProducts.delete(productId);
+                }
+            });
+            
+            selectAllCheckbox.classList.toggle('checked');
+            updateSelectionUI();
+        });
+
+        // Deseleccionar todos
+        deselectAllBtn.addEventListener('click', function() {
+            selectedProducts.clear();
+            productCheckboxes.forEach(checkbox => {
+                checkbox.classList.remove('checked');
+                const row = checkbox.closest('tr');
+                row.classList.remove('selected');
+            });
+            selectAllCheckbox.classList.remove('checked');
+            updateSelectionUI();
+        });
+
+        // Eventos de Exportación
+        if (exportExcelBtn) {
+            exportExcelBtn.addEventListener('click', () => openExportModal('excel'));
+        }
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', () => openExportModal('pdf'));
+        }
+
+        function openExportModal(format) {
+            const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+            const title = document.getElementById('exportModalTitle');
+            const formatInput = document.getElementById('exportFormat');
+            const confirmBtn = document.getElementById('confirmExportBtn');
+            const alertBox = document.getElementById('exportAlert');
+            const alertIcon = document.getElementById('exportAlertIcon');
+            
+            formatInput.value = format;
+            document.getElementById('exportCountDisplay').textContent = selectedProducts.size;
+            
+            if (format === 'excel') {
+                title.innerHTML = '<i class="fas fa-file-excel me-2 text-success"></i> Exportar a Excel';
+                confirmBtn.className = 'btn btn-outline-success btn-sm px-4';
+                alertBox.className = 'alert alert-success border-0 bg-success bg-opacity-10 d-flex align-items-center mb-4';
+                alertIcon.className = 'fas fa-info-circle me-3 fs-5 text-success';
+            } else {
+                title.innerHTML = '<i class="fas fa-file-pdf me-2 text-danger"></i> Exportar a PDF';
+                confirmBtn.className = 'btn btn-outline-danger btn-sm px-4';
+                alertBox.className = 'alert alert-danger border-0 bg-danger bg-opacity-10 d-flex align-items-center mb-4';
+                alertIcon.className = 'fas fa-info-circle me-3 fs-5 text-danger';
+            }
+            
+            modal.show();
+        }
+
+        function updateSelectionUI() {
+            const count = selectedProducts.size;
+            selectedCountElement.textContent = count;
+            
+            if (count > 0) {
+                selectionActions.style.display = 'flex';
+                const totalCheckboxes = productCheckboxes.length;
+                if (count === totalCheckboxes) {
+                    selectAllCheckbox.classList.add('checked');
+                } else {
+                    selectAllCheckbox.classList.remove('checked');
+                }
+            } else {
+                selectionActions.style.display = 'none';
+                selectAllCheckbox.classList.remove('checked');
+            }
+        }
+    }
+
+    // Manejar confirmación de exportación
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.id === 'confirmExportBtn') {
+            const format = document.getElementById('exportFormat').value;
+            const productIds = Array.from(selectedProducts);
+            const includePrices = document.getElementById('modalIncludePrices').checked;
+            const includeStock = document.getElementById('modalIncludeStock').checked;
+            const includeAllDetails = document.getElementById('modalIncludeAllDetails').checked;
+
+            // Cerrar modal
+            const modalElement = document.getElementById('exportModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            modalInstance.hide();
+
+            // Mostrar loading
+            Swal.fire({
+                title: 'Generando archivo...',
+                text: 'Por favor espere un momento.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            // Crear y enviar formulario
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = format === 'excel' ? '{{ route("productos.export.excel") }}' : '{{ route("productos.export.pdf") }}';
+
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = '_token';
+            csrfToken.value = '{{ csrf_token() }}';
+            form.appendChild(csrfToken);
+
+            productIds.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'product_ids[]';
+                input.value = id;
+                form.appendChild(input);
+            });
+
+            const options = { includePrices, includeStock, includeAllDetails };
+            Object.keys(options).forEach(key => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = options[key];
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+
+            // Limpiar selección
+            setTimeout(() => {
+                document.getElementById('deselectAll').click();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Exportación iniciada',
+                    text: 'El archivo se descargará automáticamente.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }, 1000);
+        }
+    });
+
 
     function initializeEvents() {
         const searchInput = document.querySelector('input[name="busqueda"]');
@@ -721,10 +1164,15 @@
                 tableContainer.innerHTML = newContent;
                 tableContainer.style.opacity = '1';
                 
+                // Limpiar selección al actualizar
+                selectedProducts.clear();
+                document.getElementById('selectionActions').style.display = 'none';
+                
                 // Actualizar URL sin recargar
                 window.history.pushState({}, '', fetchUrl);
                 
                 initializeEvents();
+                initializeSelectionSystem();
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -732,6 +1180,22 @@
             });
     }
 
-    document.addEventListener('DOMContentLoaded', initializeEvents);
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeEvents();
+        initializeSelectionSystem();
+    });
+
+    // Manejar clic en fila (seleccionar producto)
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('tr[data-product-id]') && !e.target.closest('.btn-action-group') && !e.target.closest('.custom-checkbox')) {
+            const row = e.target.closest('tr[data-product-id]');
+            const productId = row.dataset.productId;
+            const checkbox = row.querySelector('.product-checkbox');
+            
+            if (checkbox) {
+                checkbox.click();
+            }
+        }
+    });
 </script>
 @endpush
