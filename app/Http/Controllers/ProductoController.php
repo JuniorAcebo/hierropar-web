@@ -380,6 +380,11 @@ class ProductoController extends Controller
         try {
             $productIds = $request->input('product_ids', []);
             
+            // Convertir strings a booleanos
+            $includePrices = filter_var($request->input('includePrices', true), FILTER_VALIDATE_BOOLEAN);
+            $includeStock = filter_var($request->input('includeStock', true), FILTER_VALIDATE_BOOLEAN);
+            $includeAllDetails = filter_var($request->input('includeAllDetails', true), FILTER_VALIDATE_BOOLEAN);
+            
             if (!empty($productIds)) {
                 $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
                     ->withSum('inventarios as stock_total', 'stock')
@@ -390,7 +395,11 @@ class ProductoController extends Controller
                     ->withSum('inventarios as stock_total', 'stock')
                     ->get();
             }
-            return Excel::download(new ProductosExport($productos), 'productos.xlsx');
+            
+            return Excel::download(
+                new ProductosExport($productos, $includePrices, $includeStock, $includeAllDetails),
+                'productos.xlsx'
+            );
 
         } catch (\Exception $e) {
             return back()->with('error', 'Error al exportar productos: ' . $e->getMessage());
@@ -401,6 +410,11 @@ class ProductoController extends Controller
     {
         try {
             $productIds = $request->input('product_ids', []);
+            
+            // Convertir strings a booleanos
+            $includePrices = filter_var($request->input('includePrices', true), FILTER_VALIDATE_BOOLEAN);
+            $includeStock = filter_var($request->input('includeStock', true), FILTER_VALIDATE_BOOLEAN);
+            $includeAllDetails = filter_var($request->input('includeAllDetails', true), FILTER_VALIDATE_BOOLEAN);
             
             if (!empty($productIds)) {
                 $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
@@ -413,7 +427,7 @@ class ProductoController extends Controller
                     ->get();
             }
 
-            $pdf = Pdf::loadView('producto.pdf', compact('productos'))
+            $pdf = Pdf::loadView('producto.pdf', compact('productos', 'includePrices', 'includeStock', 'includeAllDetails'))
                 ->setPaper('a4', 'landscape');
 
             return $pdf->download('reporte-productos.pdf');

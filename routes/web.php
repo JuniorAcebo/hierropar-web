@@ -72,7 +72,7 @@ Route::prefix('compras')->name('compras.')->group(function () {
 // --- Gestión de Traslados ---
 Route::prefix('traslados')->name('traslados.')->group(function () {
     Route::patch('/{traslado}/update-estado', [TrasladoController::class, 'toggleEstado'])->name('toggleEstado');
-    Route::get('/exportar/vista', [TrasladoController::class, 'exportar'])->name('exportar');
+    Route::get('/{traslado}/detalles', [TrasladoController::class, 'getDetalles'])->name('getDetalles');
     Route::post('/exportar/excel', [TrasladoController::class, 'exportarExcel'])->name('exportar-excel');
     Route::post('/exportar/pdf', [TrasladoController::class, 'exportarPdf'])->name('exportar-pdf');
 });

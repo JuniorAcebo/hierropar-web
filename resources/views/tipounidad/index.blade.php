@@ -8,7 +8,7 @@
 
 @push('css')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<link rel="stylesheet" href="{{ asset('css/style_Marca.css') }}">
+<link rel="stylesheet" href="{{ asset('css/style_Categoria.css') }}">
 @endpush
 
 @section('content')

@@ -111,9 +111,6 @@
                             @can('crear-traslado')
                                 <a class="nav-link" href="{{ route('traslados.create') }}"><i class="fa-solid fa-plus me-1"></i>Crear</a>
                             @endcan
-                            @can('ver-traslado')
-                                <a class="nav-link" href="{{ route('traslados.exportar') }}"><i class="fa-solid fa-download me-1"></i>Exportar</a>
-                            @endcan
                         </nav>
                     </div>
                 @endcan

@@ -119,10 +119,16 @@
                 <th>Fecha</th>
                 <th>Origen</th>
                 <th>Destino</th>
-                <th>Usuario</th>
-                <th>Costo</th>
+                @if($includeUsuario ?? true)
+                    <th>Usuario</th>
+                @endif
+                @if($includeCosto ?? true)
+                    <th>Costo</th>
+                @endif
                 <th>Estado</th>
-                <th>Productos</th>
+                @if($includeDetalles ?? true)
+                    <th>Productos</th>
+                @endif
             </tr>
         </thead>
         <tbody>
@@ -132,22 +138,34 @@
             @endphp
             @foreach ($traslados as $traslado)
                 @php
-                    $costoTotal += $traslado->costo_envio;
-                    $estadoClass = 'estado-' . strtolower($estadoMap[$traslado->estado]);
+                    if ($includeCosto ?? true) {
+                        $costoTotal += $traslado->costo_envio;
+                    }
+                    $estadoClass = 'estado-' . strtolower($estadoMap[$traslado->estado] ?? 'desconocido');
                 @endphp
                 <tr>
                     <td>{{ $traslado->id }}</td>
                     <td>{{ $traslado->fecha_hora->format('d/m/Y H:i') }}</td>
-                    <td>{{ $traslado->origenAlmacen->nombre }}</td>
-                    <td>{{ $traslado->destinoAlmacen->nombre }}</td>
-                    <td>{{ $traslado->user->name }}</td>
-                    <td>${{ number_format($traslado->costo_envio, 2) }}</td>
-                    <td><span class="{{ $estadoClass }}">{{ $estadoMap[$traslado->estado] }}</span></td>
-                    <td>
-                        @foreach ($traslado->detalles as $detalle)
-                            <div>{{ $detalle->producto->nombre }} (x{{ $detalle->cantidad }})</div>
-                        @endforeach
-                    </td>
+                    <td>{{ $traslado->origenAlmacen?->nombre ?? 'N/A' }}</td>
+                    <td>{{ $traslado->destinoAlmacen?->nombre ?? 'N/A' }}</td>
+                    @if($includeUsuario ?? true)
+                        <td>{{ $traslado->user?->name ?? 'N/A' }}</td>
+                    @endif
+                    @if($includeCosto ?? true)
+                        <td>Bs {{ number_format($traslado->costo_envio, 2) }}</td>
+                    @endif
+                    <td><span class="{{ $estadoClass }}">{{ $estadoMap[$traslado->estado] ?? 'Desconocido' }}</span></td>
+                    @if($includeDetalles ?? true)
+                        <td>
+                            @if($traslado->detalles->count() > 0)
+                                @foreach ($traslado->detalles as $detalle)
+                                    <div>{{ $detalle->producto?->nombre ?? 'Producto eliminado' }} (x{{ $detalle->cantidad }})</div>
+                                @endforeach
+                            @else
+                                <div>-</div>
+                            @endif
+                        </td>
+                    @endif
                 </tr>
             @endforeach
         </tbody>
@@ -156,7 +174,9 @@
     <div class="summary">
         <p><strong>Resumen:</strong></p>
         <p>Total de traslados: <strong>{{ count($traslados) }}</strong></p>
-        <p>Costo total de envio: <strong>${{ number_format($costoTotal, 2) }}</strong></p>
+        @if($includeCosto ?? true)
+            <p>Costo total de envio: <strong>Bs {{ number_format($costoTotal, 2) }}</strong></p>
+        @endif
         <p>Pendientes: <strong>{{ $traslados->where('estado', 1)->count() }}</strong></p>
         <p>Completados: <strong>{{ $traslados->where('estado', 2)->count() }}</strong></p>
         <p>Cancelados: <strong>{{ $traslados->where('estado', 3)->count() }}</strong></p>

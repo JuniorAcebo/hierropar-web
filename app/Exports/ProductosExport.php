@@ -10,10 +10,16 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 class ProductosExport implements FromCollection, WithHeadings, WithMapping
 {
     protected $productos;
+    protected $includePrices;
+    protected $includeStock;
+    protected $includeAllDetails;
 
-    public function __construct($productos)
+    public function __construct($productos, $includePrices = true, $includeStock = true, $includeAllDetails = true)
     {
         $this->productos = $productos;
+        $this->includePrices = $includePrices;
+        $this->includeStock = $includeStock;
+        $this->includeAllDetails = $includeAllDetails;
     }
 
     public function collection()
@@ -23,31 +29,55 @@ class ProductosExport implements FromCollection, WithHeadings, WithMapping
 
     public function headings(): array
     {
-        return [
+        $headers = [
             'ID',
             'Código',
             'Nombre',
-            'Categoría',
-            'Marca',
-            'Precio Compra',
-            'Precio Venta',
-            'Stock Total',
-            'Estado'
         ];
+
+        if ($this->includeAllDetails) {
+            $headers[] = 'Categoría';
+            $headers[] = 'Marca';
+        }
+
+        if ($this->includePrices) {
+            $headers[] = 'Precio Compra';
+            $headers[] = 'Precio Venta';
+        }
+
+        if ($this->includeStock) {
+            $headers[] = 'Stock Total';
+        }
+
+        $headers[] = 'Estado';
+
+        return $headers;
     }
 
     public function map($producto): array
     {
-        return [
+        $row = [
             $producto->id,
             $producto->codigo,
             $producto->nombre,
-            $producto->categoria ? $producto->categoria->nombre : 'N/A',
-            $producto->marca ? $producto->marca->nombre : 'N/A',
-            $producto->precio_compra,
-            $producto->precio_venta,
-            $producto->stock_total ?? 0,
-            $producto->estado ? 'Activo' : 'Inactivo',
         ];
+
+        if ($this->includeAllDetails) {
+            $row[] = $producto->categoria ? $producto->categoria->nombre : 'N/A';
+            $row[] = $producto->marca ? $producto->marca->nombre : 'N/A';
+        }
+
+        if ($this->includePrices) {
+            $row[] = $producto->precio_compra;
+            $row[] = $producto->precio_venta;
+        }
+
+        if ($this->includeStock) {
+            $row[] = $producto->stock_total ?? 0;
+        }
+
+        $row[] = $producto->estado ? 'Activo' : 'Inactivo';
+
+        return $row;
     }
 }

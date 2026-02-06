@@ -3,74 +3,104 @@
 @section('title', 'Traslados')
 
 @push('css-datatable')
-<link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
+    <link href="https://cdn.jsdelivr.net/npm/simple-datatables@latest/dist/style.css" rel="stylesheet" type="text/css">
 @endpush
 
 @push('css')
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<link rel="stylesheet" href="{{ asset('css/style_Categoria.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="{{ asset('css/style_Categoria.css') }}">
 @endpush
 
 @section('content')
-@include('layouts.partials.alert')
+    @include('layouts.partials.alert')
 
-<div class="container-fluid px-4">
-    <h1 class="mt-4 text-center" style="color: #2c3e50; font-weight: 700;">Gestión de Traslados</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="{{ route('panel') }}" style="text-decoration: none;">Inicio</a></li>
-        <li class="breadcrumb-item active" style="color: #667eea;">Traslados</li>
-    </ol>
+    <div class="container-fluid px-4 py-4">
+        
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Traslados</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ route('panel') }}" class="text-decoration-none text-muted">Inicio</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Traslados</li>
+                    </ol>
+                </nav>
+            </div>
+            @can('crear-traslado')
+            <a href="{{ route('traslados.create') }}" class="btn-create">
+                <i class="fas fa-plus"></i> Nuevo Traslado
+            </a>
+            @endcan
+        </div>
 
-    @can('crear-traslado')
-    <div class="mb-4">
-        <a href="{{ route('traslados.create') }}" class="btn btn-primary-modern">
-            <i class="fas fa-plus me-2"></i> Nuevo Traslado
-        </a>
-        <a href="{{ route('traslados.exportar') }}" class="btn btn-info">
-            <i class="fas fa-download me-2"></i> Exportar
-        </a>
-    </div>
-    @endcan
-
-    <div class="card mb-4">
-        <div class="card-header">Lista de Traslados</div>
-        <div class="card-body">
-            <form action="{{ route('traslados.index') }}" method="GET" id="searchForm" class="mb-4">
-                <div class="row g-3 align-items-center">
-                    <div class="col-md-4">
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0">
-                                <i class="fas fa-search text-muted"></i>
-                            </span>
-                            <input type="text" name="busqueda" class="form-control border-start-0 ps-0" 
-                                placeholder="Buscar por origen, destino, usuario..." value="{{ $busqueda ?? '' }}">
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <label for="per_page" class="me-2 text-muted">Mostrar:</label>
-                            <select name="per_page" id="per_page" class="form-select w-auto" onchange="submitForm()">
-                                @foreach([5, 10, 15, 20, 25] as $option)
-                                    <option value="{{ $option }}" {{ ($perPage ?? 10) == $option ? 'selected' : '' }}>
-                                        {{ $option }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-5 text-end">
-                        <a href="{{ route('traslados.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-undo me-1"></i> Mostrar Todo
-                        </a>
-                    </div>
+        <div class="card-clean">
+            <div class="card-header-clean">
+                <div class="card-header-title">
+                    <i class="fas fa-list"></i> Lista de Traslados
                 </div>
-            </form>
+            </div>
 
-            <div id="table-container">
-                <div class="datatable-wrapper">
-                    <table id="datatablesSimple" class="modern-table">
+            <div class="search-container">
+                <form action="{{ route('traslados.index') }}" method="GET" id="searchForm">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <span class="input-group-text bg-white border-end-0" style="padding: 0.4rem 0.75rem;">
+                                    <i class="fas fa-search text-muted small"></i>
+                                </span>
+                                <input type="text" name="busqueda" class="form-control form-control-clean border-start-0 ps-0" 
+                                    placeholder="Buscar traslado..." value="{{ $busqueda ?? '' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center">
+                                <label for="per_page" class="me-2 text-muted small">Mostrar:</label>
+                                <select name="per_page" id="per_page" class="form-select form-select-sm w-auto" style="border-radius: 6px;">
+                                    @foreach([5, 10, 15, 20, 25] as $option)
+                                        <option value="{{ $option }}" {{ ($perPage ?? 10) == $option ? 'selected' : '' }}>
+                                            {{ $option }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-5 text-end">
+                            <a href="{{ route('traslados.index') }}" class="btn btn-outline-secondary btn-sm" style="border-radius: 6px;">
+                                <i class="fas fa-undo me-1"></i> Mostrar Todo
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- SECCIÓN: ACCIONES DE SELECCIÓN -->
+            <div class="selection-actions-container" id="selectionActions" style="display: none;">
+                <div class="selected-counter">
+                    <span>Traslados seleccionados:</span>
+                    <span class="selected-counter-badge" id="selectedCount">0</span>
+                </div>
+                <div class="action-buttons-group">
+                    <button type="button" class="btn-action-outline" id="deselectAll">
+                        <i class="fas fa-times"></i> Deseleccionar Todos
+                    </button>
+                    <button type="button" class="btn-action-secondary" id="exportExcel">
+                        <i class="fas fa-file-excel"></i> Exportar a Excel
+                    </button>
+                    <button type="button" class="btn-action-secondary" id="exportPdf" style="background: #e74c3c;">
+                        <i class="fas fa-file-pdf"></i> Exportar a PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body p-0" id="table-container">
+                <div class="table-responsive">
+                    <table id="datatablesSimple" class="custom-table">
                         <thead>
                             <tr>
+                                <th class="checkbox-header">
+                                    <div class="custom-checkbox select-all" id="selectAll">
+                                    </div>
+                                </th>
                                 <th>#</th>
                                 <th>Fecha Registro</th>
                                 <th>Origen</th>
@@ -81,67 +111,65 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($traslados as $traslado)
-                            <tr>
-                                <td>{{ $traslado->id }}</td>
-                                <td>{{ $traslado->fecha_hora->format('d/m/Y H:i:s') }}</td>
-                                <td>{{ $traslado->origenAlmacen?->nombre ?? 'N/A' }}</td>
-                                <td>{{ $traslado->destinoAlmacen?->nombre ?? 'N/A' }}</td>
-                                <td>{{ $traslado->user?->name ?? 'N/A' }}</td>
-                                <td>
-                                    @if($traslado->estado == 1)
-                                        <form action="{{ route('traslados.toggleEstado', $traslado) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('PATCH')
-                                            <select name="estado" onchange="this.form.submit()" class="form-select form-select-sm" title="Cambiar estado">
-                                                <option value="1" {{ $traslado->estado == 1 ? 'selected' : '' }}>Pendiente</option>
-                                                <option value="2" {{ $traslado->estado == 2 ? 'selected' : '' }}>Completado</option>
-                                                <option value="3" {{ $traslado->estado == 3 ? 'selected' : '' }}>Cancelado</option>
-                                            </select>
-                                        </form>
-                                    @elseif($traslado->estado == 2)
-                                        <span class="badge bg-success">Completado</span>
-                                    @else
-                                        <span class="badge bg-danger">Cancelado</span>
-                                    @endif
-                                </td>
-                                <td class="text-center">
-                                    <div class="action-btns-modern">
-                                        @can('ver-traslado')
-                                        <button class="btn-action btn-view" data-bs-toggle="modal"
-                                            data-bs-target="#verModal-{{ $traslado->id }}" title="Ver Detalles">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        @endcan
+                            @foreach ($traslados as $traslado)
+                                <tr data-traslado-id="{{ $traslado->id }}">
+                                    <td class="checkbox-cell">
+                                        <div class="custom-checkbox traslado-checkbox" data-traslado-id="{{ $traslado->id }}"></div>
+                                    </td>
+                                    <td>{{ $traslado->id }}</td>
+                                    <td>{{ $traslado->fecha_hora->format('d/m/Y H:i:s') }}</td>
+                                    <td>{{ $traslado->origenAlmacen?->nombre ?? 'N/A' }}</td>
+                                    <td>{{ $traslado->destinoAlmacen?->nombre ?? 'N/A' }}</td>
+                                    <td>{{ $traslado->user?->name ?? 'N/A' }}</td>
+                                    <td>
+                                        @if($traslado->estado == 1)
+                                            <form action="{{ route('traslados.toggleEstado', $traslado) }}" method="POST" class="d-inline">
+                                                @csrf
+                                                @method('PATCH')
+                                                <select name="estado" onchange="this.form.submit()" class="form-select form-select-sm" title="Cambiar estado">
+                                                    <option value="1" {{ $traslado->estado == 1 ? 'selected' : '' }}>Pendiente</option>
+                                                    <option value="2" {{ $traslado->estado == 2 ? 'selected' : '' }}>Completado</option>
+                                                    <option value="3" {{ $traslado->estado == 3 ? 'selected' : '' }}>Cancelado</option>
+                                                </select>
+                                            </form>
+                                        @elseif($traslado->estado == 2)
+                                            <span class="badge-pill badge-success">Completado</span>
+                                        @else
+                                            <span class="badge-pill badge-danger">Cancelado</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <div class="btn-action-group">
+                                            @can('ver-traslado')
+                                                <button class="btn-icon-soft" data-bs-toggle="modal"
+                                                    data-bs-target="#verModal-{{ $traslado->id }}" title="Ver Detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                            @endcan
 
-                                        @can('editar-traslado')
-                                                <a href="{{ route('traslados.edit', $traslado) }}" class="btn-action btn-edit" title="Editar">
-                                                    <i class="fas fa-edit"></i>
+                                            @can('editar-traslado')
+                                                <a href="{{ route('traslados.edit', $traslado) }}" class="btn-icon-soft" title="Editar">
+                                                    <i class="fas fa-pen"></i>
                                                 </a>
                                             @endcan
 
-                                        @can('eliminar-traslado')
-                                            <form action="{{ route('traslados.destroy', $traslado) }}" method="POST" class="d-inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <input type="hidden" name="accion" value="eliminar">
-                                                <button type="button" class="btn-action btn-delete btn-real-delete"
-                                                    data-nombre="Traslado #{{ $traslado->id }}" title="Eliminar">
-                                                    <i class="fas fa-trash-alt"></i>
+                                            @can('eliminar-traslado')
+                                                <button type="button" class="btn-icon-soft delete" data-bs-toggle="modal"
+                                                    data-bs-target="#confirmModal-{{ $traslado->id }}" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
                                                 </button>
-                                            </form>
-                                        @endcan 
-                                    </div>
-                                </td>
-                            </tr>
+                                            @endcan
+                                        </div>
+                                    </td>
+                                </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center mt-3">
-                    <div class="text-muted">
-                        Mostrando {{ $traslados->firstItem() }} a {{ $traslados->lastItem() }} de {{ $traslados->total() }} registros
+                <div class="p-3 d-flex justify-content-between align-items-center border-top">
+                    <div class="text-muted extra-small">
+                        Mostrando {{ $traslados->firstItem() }} - {{ $traslados->lastItem() }} de {{ $traslados->total() }} registros
                     </div>
                     <div>
                         {{ $traslados->appends(['busqueda' => $busqueda, 'per_page' => $perPage])->links() }}
@@ -149,204 +177,543 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
 
-<!-- MODALES FUERA DE LA TABLA -->
-@foreach($traslados as $traslado)
-<div class="modal fade" id="verModal-{{ $traslado->id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">Detalles del Traslado #{{ $traslado->id }}</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <!-- INFORMACIÓN GENERAL -->
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <div class="p-2 border rounded bg-light">
-                            <strong>Fecha Registro:</strong> <br>{{ $traslado->fecha_hora->format('d/m/Y H:i:s') }}
+        <!-- Modal de Exportación -->
+        <div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content modal-content-clean">
+                    <div class="modal-header modal-header-clean">
+                        <h5 class="modal-title fs-6" id="exportModalTitle">
+                            <i class="fas fa-file-export me-2"></i> Exportar Traslados
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <input type="hidden" id="exportFormat" value="excel">
+                        <div class="alert alert-success border-0 bg-success bg-opacity-10 d-flex align-items-center mb-4" id="exportAlert" style="border-radius: 12px;">
+                            <i class="fas fa-info-circle me-3 fs-5 text-success" id="exportAlertIcon"></i>
+                            <div class="small fw-medium text-success">
+                                Se exportarán <strong id="exportCountDisplay">0</strong> traslados seleccionados.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="info-subtext mb-2 text-uppercase letter-spacing-05 small fw-bold">Opciones de Datos</label>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="modalIncludeDetalles" checked>
+                                <label class="form-check-label d-block" for="modalIncludeDetalles">
+                                    <span class="d-block fw-semibold small">Incluir detalles de productos</span>
+                                    <span class="extra-small text-muted">Lista de productos trasladados</span>
+                                </label>
+                            </div>
+
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="modalIncludeCosto" checked>
+                                <label class="form-check-label d-block" for="modalIncludeCosto">
+                                    <span class="d-block fw-semibold small">Incluir costo de envío</span>
+                                    <span class="extra-small text-muted">Información de costos</span>
+                                </label>
+                            </div>
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="modalIncludeUsuario" checked>
+                                <label class="form-check-label d-block" for="modalIncludeUsuario">
+                                    <span class="d-block fw-semibold small">Incluir información de usuario</span>
+                                    <span class="extra-small text-muted">Usuario que realizó el traslado</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="p-2 border rounded bg-light">
-                            <strong>Usuario:</strong> <br>{{ $traslado->user?->name ?? 'N/A' }}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-2 border rounded bg-light">
-                            <strong>Almacén Origen:</strong> <br>{{ $traslado->origenAlmacen?->nombre ?? 'N/A' }}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-2 border rounded bg-light">
-                            <strong>Almacén Destino:</strong> <br>{{ $traslado->destinoAlmacen?->nombre ?? 'N/A' }}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="p-2 border rounded bg-light">
-                            <strong>Costo de Envío:</strong> <br>Bs {{ number_format($traslado->costo_envio, 2) }}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        @php
-                            $estadoColor = match($traslado->estado) {
-                                1 => 'warning',
-                                2 => 'success',
-                                3 => 'danger',
-                                default => 'secondary',
-                            };
-                            $estadoText = match($traslado->estado) {
-                                1 => 'Pendiente',
-                                2 => 'Completado',
-                                3 => 'Cancelado',
-                                default => 'Desconocido',
-                            };
-                        @endphp
-                        <div class="p-2 border rounded bg-{{ $estadoColor }} text-white text-center fw-bold">
-                            {{ $estadoText }}
-                        </div>
+                    <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="button" class="btn btn-outline-danger btn-sm px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm px-4" id="confirmExportBtn">
+                            <i class="fas fa-download me-1"></i> Generar Archivo
+                        </button>
                     </div>
                 </div>
-
-                <!-- PRODUCTOS -->
-                <h6 class="fw-bold mt-3 mb-2 border-bottom pb-1">Productos Trasladados</h6>
-                @if($traslado->detalles->count())
-                    <div class="table-responsive">
-                        <table class="table table-hover table-bordered align-middle">
-                            <thead class="table-light text-center">
-                                <tr>
-                                    <th>Producto</th>
-                                    <th>Cantidad</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($traslado->detalles as $detalle)
-                                <tr>
-                                    <td>{{ $detalle->producto?->nombre ?? 'Producto eliminado' }}</td>
-                                    <td class="text-center">{{ $detalle->cantidad }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @else
-                    <div class="alert alert-warning py-2 mb-0 text-center">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        No hay productos asociados a este traslado.
-                    </div>
-                @endif
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
-</div>
-@endforeach
 
+    <!-- MODALES FUERA DE LA TABLA -->
+    <div id="modales-section">
+    @foreach ($traslados as $traslado)
+        <!-- Modal de detalles -->
+        <div class="modal fade" id="verModal-{{ $traslado->id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable modal-lg modal-dialog-centered">
+                <div class="modal-content modal-content-clean">
+                    <div class="modal-header modal-header-clean">
+                        <h5 class="modal-title fs-6">Detalles del Traslado #{{ $traslado->id }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="info-subtext mb-1">Fecha Registro</label>
+                                <div class="p-2 border rounded bg-light small">{{ $traslado->fecha_hora->format('d/m/Y H:i:s') }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="info-subtext mb-1">Usuario</label>
+                                <div class="p-2 border rounded bg-light small">{{ $traslado->user?->name ?? 'N/A' }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="info-subtext mb-1">Almacén Origen</label>
+                                <div class="p-2 border rounded bg-light small">{{ $traslado->origenAlmacen?->nombre ?? 'N/A' }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="info-subtext mb-1">Almacén Destino</label>
+                                <div class="p-2 border rounded bg-light small">{{ $traslado->destinoAlmacen?->nombre ?? 'N/A' }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="info-subtext mb-1">Costo de Envío</label>
+                                <div class="fw-bold">Bs {{ number_format($traslado->costo_envio, 2) }}</div>
+                            </div>
+                            <div class="col-md-6">
+                                @php
+                                    $estadoColor = match($traslado->estado) {
+                                        1 => 'warning',
+                                        2 => 'success',
+                                        3 => 'danger',
+                                        default => 'secondary',
+                                    };
+                                    $estadoText = match($traslado->estado) {
+                                        1 => 'Pendiente',
+                                        2 => 'Completado',
+                                        3 => 'Cancelado',
+                                        default => 'Desconocido',
+                                    };
+                                @endphp
+                                <label class="info-subtext mb-1">Estado</label>
+                                <div class="p-2 border rounded bg-{{ $estadoColor }} text-white text-center fw-bold">
+                                    {{ $estadoText }}
+                                </div>
+                            </div>
+                        </div>
 
+                        <!-- PRODUCTOS TRASLADADOS -->
+                        <div class="mt-4">
+                            <h6 class="fw-semibold border-bottom pb-2 small uppercase letter-spacing-05">
+                                <i class="fas fa-box me-2 text-muted"></i>Productos Trasladados
+                            </h6>
+                            @if($traslado->detalles->count())
+                                <div class="table-responsive mt-2">
+                                    <table class="table table-hover table-bordered align-middle">
+                                        <thead class="table-light text-center">
+                                            <tr>
+                                                <th>Producto</th>
+                                                <th class="text-center">Cantidad</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($traslado->detalles as $detalle)
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="product-avatar me-2" style="width: 32px; height: 32px; font-size: 0.9rem;">
+                                                            <i class="fas fa-box small"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-semibold small">{{ $detalle->producto?->nombre ?? 'Producto eliminado' }}</div>
+                                                            @if($detalle->producto)
+                                                                <span class="info-subtext">Código: {{ $detalle->producto->codigo }}</span>
+                                                            @endif
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge-pill badge-primary">{{ $detalle->cantidad }}</span>
+                                                </td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                        <tfoot>
+                                            <tr class="table-light">
+                                                <th class="text-end">Total:</th>
+                                                <th class="text-center">
+                                                    <span class="badge-pill badge-success">
+                                                        {{ $traslado->detalles->sum('cantidad') }}
+                                                    </span>
+                                                </th>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="alert alert-light border py-2 small mt-2 text-center">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    No hay productos asociados a este traslado.
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light btn-sm px-4" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal de confirmación -->
+        <div class="modal fade" id="confirmModal-{{ $traslado->id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content modal-content-clean">
+                    <div class="modal-header modal-header-clean">
+                        <h5 class="modal-title fs-6">Confirmar eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        <h6 class="mb-3">¿Estás seguro de eliminar el Traslado #{{ $traslado->id }}?</h6>
+                        <p class="text-muted small mb-4">
+                            Esta acción no se puede deshacer.
+                        </p>
+                        
+                        <div class="d-flex justify-content-center gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
+                            
+                            <form action="{{ route('traslados.destroy', $traslado) }}" method="post" class="d-inline">
+                                @method('DELETE')
+                                @csrf
+                                <input type="hidden" name="accion" value="eliminar">
+                                <button type="submit" class="btn btn-outline-danger btn-sm px-3">Eliminar</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endforeach
+    </div>
 @endsection
 
 @push('js')
-<script src="https://cdn.jsdelivr.net/npm/simple-datatables@latest"></script>
 <script>
-let debounceTimer;
-const searchInput = document.querySelector('input[name="busqueda"]');
-const perPageSelect = document.getElementById('per_page');
-const tableContainer = document.getElementById('table-container');
+    let debounceTimer;
+    const tableContainer = document.getElementById('table-container');
+    let selectedTraslados = new Set();
 
-if (searchInput) {
-    searchInput.addEventListener('input', function() {
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(fetchTraslados, 300);
-    });
-    searchInput.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            clearTimeout(debounceTimer);
-            fetchTraslados();
+    // Sistema de selección
+    function initializeSelectionSystem() {
+        const selectionActions = document.getElementById('selectionActions');
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const trasladoCheckboxes = document.querySelectorAll('.traslado-checkbox');
+        const selectedCountElement = document.getElementById('selectedCount');
+        const deselectAllBtn = document.getElementById('deselectAll');
+        const exportExcelBtn = document.getElementById('exportExcel');
+        const exportPdfBtn = document.getElementById('exportPdf');
+
+        // Seleccionar/Deseleccionar traslado individual
+        trasladoCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('click', function() {
+                const trasladoId = this.dataset.trasladoId;
+                const row = this.closest('tr');
+                
+                if (this.classList.contains('checked')) {
+                    // Deseleccionar
+                    this.classList.remove('checked');
+                    row.classList.remove('selected');
+                    selectedTraslados.delete(trasladoId);
+                } else {
+                    // Seleccionar
+                    this.classList.add('checked');
+                    row.classList.add('selected');
+                    selectedTraslados.add(trasladoId);
+                }
+                
+                updateSelectionUI();
+            });
+        });
+
+        // Seleccionar todos
+        selectAllCheckbox.addEventListener('click', function() {
+            const isSelectAll = !this.classList.contains('checked');
+            
+            trasladoCheckboxes.forEach(checkbox => {
+                const trasladoId = checkbox.dataset.trasladoId;
+                const row = checkbox.closest('tr');
+                
+                if (isSelectAll) {
+                    checkbox.classList.add('checked');
+                    row.classList.add('selected');
+                    selectedTraslados.add(trasladoId);
+                } else {
+                    checkbox.classList.remove('checked');
+                    row.classList.remove('selected');
+                    selectedTraslados.delete(trasladoId);
+                }
+            });
+            
+            selectAllCheckbox.classList.toggle('checked');
+            updateSelectionUI();
+        });
+
+        // Deseleccionar todos
+        deselectAllBtn.addEventListener('click', function() {
+            selectedTraslados.clear();
+            trasladoCheckboxes.forEach(checkbox => {
+                checkbox.classList.remove('checked');
+                const row = checkbox.closest('tr');
+                row.classList.remove('selected');
+            });
+            selectAllCheckbox.classList.remove('checked');
+            updateSelectionUI();
+        });
+
+        // Eventos de Exportación
+        if (exportExcelBtn) {
+            exportExcelBtn.addEventListener('click', () => openExportModal('excel'));
+        }
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', () => openExportModal('pdf'));
+        }
+
+        function openExportModal(format) {
+            const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+            const title = document.getElementById('exportModalTitle');
+            const formatInput = document.getElementById('exportFormat');
+            const confirmBtn = document.getElementById('confirmExportBtn');
+            const alertBox = document.getElementById('exportAlert');
+            const alertIcon = document.getElementById('exportAlertIcon');
+            
+            formatInput.value = format;
+            document.getElementById('exportCountDisplay').textContent = selectedTraslados.size;
+            
+            if (format === 'excel') {
+                title.innerHTML = '<i class="fas fa-file-excel me-2 text-success"></i> Exportar a Excel';
+                confirmBtn.className = 'btn btn-outline-success btn-sm px-4';
+                alertBox.className = 'alert alert-success border-0 bg-success bg-opacity-10 d-flex align-items-center mb-4';
+                alertIcon.className = 'fas fa-info-circle me-3 fs-5 text-success';
+            } else {
+                title.innerHTML = '<i class="fas fa-file-pdf me-2 text-danger"></i> Exportar a PDF';
+                confirmBtn.className = 'btn btn-outline-danger btn-sm px-4';
+                alertBox.className = 'alert alert-danger border-0 bg-danger bg-opacity-10 d-flex align-items-center mb-4';
+                alertIcon.className = 'fas fa-info-circle me-3 fs-5 text-danger';
+            }
+            
+            modal.show();
+        }
+
+        function updateSelectionUI() {
+            const count = selectedTraslados.size;
+            selectedCountElement.textContent = count;
+            
+            if (count > 0) {
+                selectionActions.style.display = 'flex';
+                const totalCheckboxes = trasladoCheckboxes.length;
+                if (count === totalCheckboxes) {
+                    selectAllCheckbox.classList.add('checked');
+                } else {
+                    selectAllCheckbox.classList.remove('checked');
+                }
+            } else {
+                selectionActions.style.display = 'none';
+                selectAllCheckbox.classList.remove('checked');
+            }
+        }
+    }
+
+    // Manejar confirmación de exportación
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.id === 'confirmExportBtn') {
+            const format = document.getElementById('exportFormat').value;
+            const trasladoIds = Array.from(selectedTraslados);
+            const includeDetalles = document.getElementById('modalIncludeDetalles').checked;
+            const includeCosto = document.getElementById('modalIncludeCosto').checked;
+            const includeUsuario = document.getElementById('modalIncludeUsuario').checked;
+
+            // Cerrar modal
+            const modalElement = document.getElementById('exportModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            modalInstance.hide();
+
+            // Mostrar loading
+            Swal.fire({
+                title: 'Generando archivo...',
+                text: 'Por favor espere un momento.',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
+
+            // Crear y enviar formulario
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = format === 'excel' ? '{{ route("traslados.exportar-excel") }}' : '{{ route("traslados.exportar-pdf") }}';
+
+            const csrfToken = document.createElement('input');
+            csrfToken.type = 'hidden';
+            csrfToken.name = '_token';
+            csrfToken.value = '{{ csrf_token() }}';
+            form.appendChild(csrfToken);
+
+            trasladoIds.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'traslado_ids[]';
+                input.value = id;
+                form.appendChild(input);
+            });
+
+            const options = { includeDetalles, includeCosto, includeUsuario };
+            Object.keys(options).forEach(key => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = options[key];
+                form.appendChild(input);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+
+            // Limpiar selección
+            setTimeout(() => {
+                document.getElementById('deselectAll').click();
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Exportación iniciada',
+                    text: 'El archivo se descargará automáticamente.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }, 1000);
         }
     });
-}
 
-function fetchTraslados(url = null) {
-    const query = searchInput.value;
-    const perPage = perPageSelect.value;
-    let fetchUrl = url;
+    function initializeEvents() {
+        const searchInput = document.querySelector('input[name="busqueda"]');
+        const perPageSelect = document.getElementById('per_page');
 
-    if (!fetchUrl) {
-        fetchUrl = "{{ route('traslados.index') }}";
-        const params = new URLSearchParams();
-        if (query) params.append('busqueda', query);
-        if (perPage) params.append('per_page', perPage);
-        fetchUrl += `?${params.toString()}`;
+        // Búsqueda
+        if (searchInput) {
+            searchInput.focus();
+            const len = searchInput.value.length;
+            searchInput.setSelectionRange(len, len);
+            
+            searchInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => fetchTraslados(), 300);
+            });
+        }
+
+        // Items por página
+        if (perPageSelect) {
+            perPageSelect.addEventListener('change', () => fetchTraslados());
+        }
     }
 
-    tableContainer.style.opacity = '0.5';
+    function fetchTraslados(url = null) {
+        const searchInput = document.querySelector('input[name="busqueda"]');
+        const perPageSelect = document.getElementById('per_page');
+        
+        let fetchUrl = url;
+        if (!fetchUrl) {
+            const params = new URLSearchParams(window.location.search);
+            if (searchInput) params.set('busqueda', searchInput.value);
+            if (perPageSelect) params.set('per_page', perPageSelect.value);
+            fetchUrl = `{{ route('traslados.index') }}?${params.toString()}`;
+        }
 
-    fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-        .then(response => response.text())
-        .then(html => {
-            const parser = new DOMParser();
-            tableContainer.innerHTML = parser.parseFromString(html, 'text/html')
-                                         .getElementById('table-container').innerHTML;
-            tableContainer.style.opacity = '1';
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            tableContainer.style.opacity = '1';
-        });
-}
-
-function submitForm() {
-    fetchTraslados();
-}
-
-document.addEventListener('click', function (e) {
-    if (e.target.closest('.btn-real-delete')) {
-        const btn = e.target.closest('.btn-real-delete');
-        const form = btn.closest('form');
-        const nombre = btn.dataset.nombre;
-
-        Swal.fire({
-            title: '¿Estás seguro?',
-            text: `Deseas eliminar "${nombre}"`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Sí, eliminar',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                form.submit();
-            }
-        });
+        tableContainer.style.opacity = '0.6';
+        
+        fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const newDoc = parser.parseFromString(html, 'text/html');
+                const newContent = newDoc.getElementById('table-container').innerHTML;
+                
+                tableContainer.innerHTML = newContent;
+                tableContainer.style.opacity = '1';
+                
+                // Actualizar modales (están fuera del table-container)
+                const modalesSection = document.querySelector('#modales-section');
+                if (modalesSection) {
+                    // Buscar la sección de modales en el nuevo documento
+                    const newModalesSection = newDoc.querySelector('#modales-section');
+                    if (newModalesSection) {
+                        // Reemplazar todo el contenido de la sección de modales
+                        modalesSection.innerHTML = newModalesSection.innerHTML;
+                    }
+                }
+                
+                // Limpiar selección al actualizar
+                selectedTraslados.clear();
+                document.getElementById('selectionActions').style.display = 'none';
+                
+                // Actualizar URL sin recargar
+                window.history.pushState({}, '', fetchUrl);
+                
+                initializeEvents();
+                initializeSelectionSystem();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                tableContainer.style.opacity = '1';
+            });
     }
-});
 
-// Mostrar SweetAlert si hay un mensaje de error
-@if ($errors->any() || session('error'))
-    Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        html: `
-            @if (session('error'))
-                {{ session('error') }}
-            @endif
-            @if ($errors->any())
-                <ul>
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            @endif
-        `,
-        confirmButtonText: 'Aceptar'
+    // Cargar detalles del traslado cuando se abre el modal
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeEvents();
+        initializeSelectionSystem();
     });
-@endif
 
+    // Manejar clic en fila (seleccionar traslado)
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('tr[data-traslado-id]') && !e.target.closest('.btn-action-group') && !e.target.closest('.custom-checkbox') && !e.target.closest('select') && !e.target.closest('form')) {
+            const row = e.target.closest('tr[data-traslado-id]');
+            const trasladoId = row.dataset.trasladoId;
+            const checkbox = row.querySelector('.traslado-checkbox');
+            
+            if (checkbox) {
+                checkbox.click();
+            }
+        }
+    });
+
+    // Manejar eliminación
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('.btn-real-delete')) {
+            const btn = e.target.closest('.btn-real-delete');
+            const form = btn.closest('form');
+            const nombre = btn.dataset.nombre;
+
+            Swal.fire({
+                title: '¿Estás seguro?',
+                text: `Deseas eliminar "${nombre}"`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        }
+    });
+
+    // Mostrar SweetAlert si hay un mensaje de error
+    @if ($errors->any() || session('error'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            html: `
+                @if (session('error'))
+                    {{ session('error') }}
+                @endif
+                @if ($errors->any())
+                    <ul>
+                        @foreach ($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+            `,
+            confirmButtonText: 'Aceptar'
+        });
+    @endif
 </script>
 @endpush

@@ -9,10 +9,12 @@ use App\Models\InventarioAlmacen;
 use App\Models\Producto;
 use App\Models\Traslado;
 use App\Traits\FilterByAlmacen;
+use App\Exports\TrasladosExport;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TrasladoController extends Controller
 {
@@ -68,6 +70,15 @@ class TrasladoController extends Controller
 
         // Traer almacenes activos (opcional, para filtros)
         $almacenes = Almacen::where('estado', true)->get();
+
+        if ($request->ajax()) {
+            return view('traslado.index', compact(
+                'traslados',
+                'busqueda',
+                'perPage',
+                'almacenes'
+            ));
+        }
 
         return view('traslado.index', compact(
             'traslados',
@@ -315,87 +326,44 @@ class TrasladoController extends Controller
     }
 
     /**
-     * Mostrar formulario de exportación
-     */
-    public function exportar()
-    {
-        return view('traslado.exportar');
-    }
-
-    /**
-     * Exportar traslados a Excel (CSV)
+     * Exportar traslados a Excel
      */
     public function exportarExcel(Request $request)
     {
-        $request->validate([
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
-            'estado' => 'required|in:todos,1,2,3',
-        ], [
-            'fecha_inicio.required' => 'La fecha de inicio es requerida',
-            'fecha_fin.required' => 'La fecha de fin es requerida',
-            'fecha_fin.after_or_equal' => 'La fecha de fin debe ser igual o posterior a la fecha de inicio',
-            'estado.required' => 'El estado es requerido',
-            'estado.in' => 'El estado no es válido',
-        ]);
+        try {
+            $trasladoIds = $request->input('traslado_ids', []);
+            // Convertir strings a booleanos
+            $includeDetalles = filter_var($request->input('includeDetalles', true), FILTER_VALIDATE_BOOLEAN);
+            $includeCosto = filter_var($request->input('includeCosto', true), FILTER_VALIDATE_BOOLEAN);
+            $includeUsuario = filter_var($request->input('includeUsuario', true), FILTER_VALIDATE_BOOLEAN);
 
-        $fechaInicio = $request->fecha_inicio . ' 00:00:00';
-        $fechaFin = $request->fecha_fin . ' 23:59:59';
+            // Si hay IDs seleccionados, usar esos; si no, exportar todos
+            if (!empty($trasladoIds)) {
+                $query = Traslado::with(['origenAlmacen', 'destinoAlmacen', 'user', 'detalles.producto'])
+                    ->whereIn('id', $trasladoIds);
+            } else {
+                $query = Traslado::with(['origenAlmacen', 'destinoAlmacen', 'user', 'detalles.producto']);
+            }
 
-        $query = Traslado::with(['origenAlmacen', 'destinoAlmacen', 'user', 'detalles.producto'])
-            ->whereBetween('fecha_hora', [$fechaInicio, $fechaFin]);
+            // Filtrar por almacén del usuario
+            $query = $this->filterByUserAlmacen($query, 'origen_almacen_id');
 
-        // Filtrar por estado
-        if ($request->estado !== 'todos') {
-            $query->where('estado', $request->estado);
+            $traslados = $query->orderBy('fecha_hora', 'desc')->get();
+
+            if ($traslados->isEmpty()) {
+                return back()->with('warning', 'No hay traslados para exportar');
+            }
+
+            $filename = 'traslados_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
+            
+            return Excel::download(
+                new TrasladosExport($traslados, $includeDetalles, $includeCosto, $includeUsuario),
+                $filename
+            );
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al exportar traslados: ' . $e->getMessage());
         }
-
-        $traslados = $query->orderBy('fecha_hora', 'desc')->get();
-
-        if ($traslados->isEmpty()) {
-            return back()->with('warning', 'No hay traslados en el rango de fechas especificado');
-        }
-
-        // Mapeo de estados
-        $estadoMap = [1 => 'Pendiente', 2 => 'Completado', 3 => 'Cancelado'];
-
-        // Crear el archivo CSV
-        $filename = 'traslados_' . now()->format('Y-m-d_H-i-s') . '.csv';
-        $handle = fopen('php://memory', 'w');
-
-        // Encabezados CSV
-        fputcsv($handle, ['ID', 'Fecha', 'Origen', 'Destino', 'Usuario', 'Costo Envío', 'Estado', 'Productos'], ';');
-
-        // Datos
-        foreach ($traslados as $traslado) {
-            $productos = $traslado->detalles->map(function ($d) {
-                return $d->producto->nombre . ' (x' . $d->cantidad . ')';
-            })->implode(', ');
-
-            fputcsv($handle, [
-                $traslado->id,
-                $traslado->fecha_hora->format('d/m/Y H:i'),
-                $traslado->origenAlmacen->nombre,
-                $traslado->destinoAlmacen->nombre,
-                $traslado->user->name,
-                number_format($traslado->costo_envio, 2, ',', '.'),
-                $estadoMap[$traslado->estado],
-                $productos
-            ], ';');
-        }
-
-        // Retroceder al principio del archivo
-        rewind($handle);
-        $csv = stream_get_contents($handle);
-        fclose($handle);
-
-        // Agregar BOM para que Excel reconozca la codificación UTF-8
-        $csv = "\xEF\xBB\xBF" . $csv;
-
-        // Enviar el archivo
-        return response($csv)
-            ->header('Content-Type', 'text/csv; charset=utf-8')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
     /**
@@ -403,37 +371,77 @@ class TrasladoController extends Controller
      */
     public function exportarPdf(Request $request)
     {
-        $request->validate([
-            'fecha_inicio' => 'required|date',
-            'fecha_fin' => 'required|date|after_or_equal:fecha_inicio',
-            'estado' => 'required|in:todos,1,2,3',
-        ], [
-            'fecha_inicio.required' => 'La fecha de inicio es requerida',
-            'fecha_fin.required' => 'La fecha de fin es requerida',
-            'fecha_fin.after_or_equal' => 'La fecha de fin debe ser igual o posterior a la fecha de inicio',
-            'estado.required' => 'El estado es requerido',
-            'estado.in' => 'El estado no es válido',
-        ]);
+        $trasladoIds = $request->input('traslado_ids', []);
+        // Convertir strings a booleanos
+        $includeDetalles = filter_var($request->input('includeDetalles', true), FILTER_VALIDATE_BOOLEAN);
+        $includeCosto = filter_var($request->input('includeCosto', true), FILTER_VALIDATE_BOOLEAN);
+        $includeUsuario = filter_var($request->input('includeUsuario', true), FILTER_VALIDATE_BOOLEAN);
 
-        $fechaInicio = $request->fecha_inicio . ' 00:00:00';
-        $fechaFin = $request->fecha_fin . ' 23:59:59';
-
-        $query = Traslado::with(['origenAlmacen', 'destinoAlmacen', 'user', 'detalles.producto'])
-            ->whereBetween('fecha_hora', [$fechaInicio, $fechaFin]);
-
-        // Filtrar por estado
-        if ($request->estado !== 'todos') {
-            $query->where('estado', $request->estado);
+        // Si hay IDs seleccionados, usar esos; si no, exportar todos
+        if (!empty($trasladoIds)) {
+            $query = Traslado::with(['origenAlmacen', 'destinoAlmacen', 'user', 'detalles.producto'])
+                ->whereIn('id', $trasladoIds);
+        } else {
+            $query = Traslado::with(['origenAlmacen', 'destinoAlmacen', 'user', 'detalles.producto']);
         }
+
+        // Filtrar por almacén del usuario
+        $query = $this->filterByUserAlmacen($query, 'origen_almacen_id');
 
         $traslados = $query->orderBy('fecha_hora', 'desc')->get();
 
         if ($traslados->isEmpty()) {
-            return back()->with('warning', 'No hay traslados en el rango de fechas especificado');
+            return back()->with('warning', 'No hay traslados para exportar');
         }
 
-        $pdf = Pdf::loadView('traslado.pdf', compact('traslados'));
+        $pdf = Pdf::loadView('traslado.pdf', compact('traslados', 'includeDetalles', 'includeCosto', 'includeUsuario'))
+            ->setPaper('a4', 'landscape');
         return $pdf->download('traslados_' . now()->format('Y-m-d_H-i-s') . '.pdf');
+    }
+
+    /**
+     * Obtener detalles de un traslado (para cargar en modal)
+     */
+    public function getDetalles(Traslado $traslado)
+    {
+        // Validar que el usuario pueda ver este traslado
+        if (!$this->canAccessAlmacen($traslado->origen_almacen_id)) {
+            return response()->json(['error' => 'No tienes permiso para ver este traslado'], 403);
+        }
+
+        $traslado->load(['detalles.producto', 'origenAlmacen', 'destinoAlmacen', 'user']);
+
+        return response()->json([
+            'traslado' => [
+                'id' => $traslado->id,
+                'fecha_hora' => $traslado->fecha_hora->format('d/m/Y H:i:s'),
+                'origen' => $traslado->origenAlmacen?->nombre ?? 'N/A',
+                'destino' => $traslado->destinoAlmacen?->nombre ?? 'N/A',
+                'usuario' => $traslado->user?->name ?? 'N/A',
+                'costo_envio' => number_format($traslado->costo_envio, 2),
+                'estado' => $traslado->estado,
+                'estado_text' => match($traslado->estado) {
+                    1 => 'Pendiente',
+                    2 => 'Completado',
+                    3 => 'Cancelado',
+                    default => 'Desconocido',
+                },
+                'estado_color' => match($traslado->estado) {
+                    1 => 'warning',
+                    2 => 'success',
+                    3 => 'danger',
+                    default => 'secondary',
+                },
+            ],
+            'detalles' => $traslado->detalles->map(function($detalle) {
+                return [
+                    'producto_nombre' => $detalle->producto?->nombre ?? 'Producto eliminado',
+                    'producto_codigo' => $detalle->producto?->codigo ?? null,
+                    'cantidad' => $detalle->cantidad,
+                ];
+            }),
+            'total_cantidad' => $traslado->detalles->sum('cantidad'),
+        ]);
     }
 
 }
