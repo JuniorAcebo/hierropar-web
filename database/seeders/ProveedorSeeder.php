@@ -11,9 +11,6 @@ class ProveedorSeeder extends Seeder
 
     public function run(): void
     {
-        Proveedor::create([
-            'persona_id' => Persona::where('nombre', 'Proveedor General')->first()->id ?? null,
-            'estado' => true
-        ]);
+
     }
 }

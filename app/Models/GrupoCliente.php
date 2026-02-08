@@ -11,10 +11,10 @@ class GrupoCliente extends Model
 
     protected $table = 'grupos_clientes';
 
-    protected $fillable = ['nombre', 'descripcion'];
-
+    protected $fillable = ['nombre','descripcion','descuento_global','estado'];
+    
     public function clientes()
     {
-        return $this->hasMany(Cliente::class, 'grupo_id');
+        return $this->hasMany(Cliente::class, 'grupo_cliente_id');
     }
 }
