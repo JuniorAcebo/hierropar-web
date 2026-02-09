@@ -84,16 +84,48 @@
             
             <div class="col-md-4">
                 <div class="label-title">Costo Transporte</div>
-                <div class="value-text text-danger">{{ number_format($compra->costo_transporte, 2) }}</div>
+                <div class="value-text text-danger fw-bold">{{ number_format($compra->costo_transporte, 2) }}</div>
             </div>
-            <div class="col-md-4">
-                <div class="label-title">Estado Entrega</div>
-                @php
-                    $estadoClass = $compra->estado_entrega == 'entregado' ? 'bg-success' : 'bg-warning text-dark';
-                    $estadoText = $compra->estado_entrega == 'entregado' ? 'Entregado' : 'Por Recibir';
-                @endphp
-                <span class="badge {{ $estadoClass }} badge-modern">{{ $estadoText }}</span>
+        </div>
+
+        <div class="section-title mt-4">
+            <i class="fas fa-tasks"></i> Estados y Acciones
+        </div>
+
+        <div class="row g-3 mb-2">
+            <div class="col-md-6">
+                <div class="label-title mb-2">Estado de Pago</div>
+                <div class="dropdown">
+                    @php
+                        $btnClass = (in_array($compra->estado_pago, ['pendiente', '0', 0])) ? 'btn-outline-danger' : 'btn-outline-success';
+                        $statusTxt = (in_array($compra->estado_pago, ['pendiente', '0', 0])) ? 'Pendiente' : 'Pagado';
+                    @endphp
+                    <button class="btn {{ $btnClass }} btn-sm dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ $statusTxt }}
+                    </button>
+                    <ul class="dropdown-menu w-100 shadow-sm border-0">
+                        <li><a class="dropdown-item change-status-pago" href="#" data-compra-id="{{ $compra->id }}" data-status="pagado">Confirmar Pago</a></li>
+                        <li><a class="dropdown-item change-status-pago" href="#" data-compra-id="{{ $compra->id }}" data-status="pendiente">Pendiente</a></li>
+                    </ul>
+                </div>
             </div>
+            <div class="col-md-6">
+                <div class="label-title mb-2">Estado de Entrega</div>
+                <div class="dropdown">
+                    @php
+                        $entregaText = $compra->estado_entrega == 'entregado' ? 'Entregado' : 'Por Recibir';
+                        $entregaBtn = $compra->estado_entrega == 'entregado' ? 'btn-outline-success' : 'btn-outline-warning';
+                    @endphp
+                    <button class="btn {{ $entregaBtn }} btn-sm dropdown-toggle w-100 text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ $entregaText }}
+                    </button>
+                    <ul class="dropdown-menu w-100 shadow-sm border-0">
+                        <li><a class="dropdown-item change-status-entrega" href="#" data-compra-id="{{ $compra->id }}" data-status="entregado">Recibido (Entregado)</a></li>
+                        <li><a class="dropdown-item change-status-entrega" href="#" data-compra-id="{{ $compra->id }}" data-status="por_entregar">Pendiente (Por Recibir)</a></li>
+                    </ul>
+                </div>
+            </div>
+
             <div class="col-md-12">
                 <div class="label-title">Nota/Observaciones</div>
                 <div class="value-text fst-italic text-muted">

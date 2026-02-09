@@ -35,7 +35,7 @@
         .form-control-sm {
             font-size: 13px;
             padding: 4px 8px;
-            height: 30px;
+            height: 32px;
         }
         .table th {
             font-size: 13px;
@@ -48,45 +48,42 @@
             padding: 8px;
             vertical-align: middle;
         }
-        .stock-warning {
-            color: #dc3545;
-            font-weight: 500;
+        
+        /* Search Component */
+        .search-wrapper { position: relative; }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 4; }
+        #producto_search { padding-left: 35px; border-radius: 4px; }
+        
+        .products-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #dee2e6;
+            border-radius: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 350px; overflow-y: auto; display: none;
         }
-        .stock-normal {
-            color: #28a745;
-            font-weight: 500;
+        .product-item {
+            padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f1f1f1; display: flex; justify-content: space-between; align-items: center;
         }
-        .precio-highlight {
-            color: #2c3e50;
-            font-weight: 600;
+        .product-item:hover, .product-item.active { background-color: #f8f9fa; }
+        .product-item.disabled { opacity: 0.5; cursor: not-allowed; }
+        .product-item .prod-main { font-weight: 500; color: #333; font-size: 13px; }
+        .product-item .prod-sub { font-size: 11px; color: #6c757d; }
+        .product-item .prod-price { font-weight: 600; color: #2c3e50; font-size: 12px; }
+
+        /* Selection Card */
+        .product-selection-card {
+            background-color: #f8fbff; border: 1px solid #d1e3ff; border-radius: 6px; padding: 15px; margin-bottom: 15px; display: none;
         }
-        .btn-sm {
-            padding: 3px 8px;
-            font-size: 12px;
-        }
-        .product-info-card {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 4px;
-            padding: 12px;
-            margin-bottom: 12px;
-        }
-        .product-info-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 10px;
-        }
-        .compact-row {
-            margin-bottom: 0;
-        }
-        .compact-row > div {
-            margin-bottom: 8px;
-        }
+        .selection-title { font-size: 14px; font-weight: 700; color: #0056b3; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        
+        .badge-stock { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .stock-ok { background-color: #d1ecf1; color: #0c5460; }
+        .stock-low { background-color: #fff3cd; color: #856404; }
+        .stock-out { background-color: #f8d7da; color: #721c24; }
+
+        .h-32 { height: 32px !important; }
     </style>
 @endpush
 
 @section('content')
+    @include('layouts.partials.alert')
     <div class="container-fluid px-4">
         <h1 class="mt-4 fs-4 fw-bold">Realizar Venta</h1>
         <ol class="breadcrumb mb-3">
@@ -99,218 +96,124 @@
     <form action="{{ route('ventas.store') }}" method="post" id="ventaForm">
         @csrf
         <div class="container-lg">
-            <!-- Sección de Datos Generales -->
             <div class="border-section">
-                <div class="section-title">
-                    <i class="fas fa-info-circle"></i> Datos Generales
-                </div>
-                <div class="row g-3 compact-row">
-                    <!--Cliente-->
+                <div class="section-title"><i class="fas fa-info-circle"></i> Datos Generales</div>
+                <div class="row g-3">
                     <div class="col-md-6">
-                        <label for="cliente_id" class="form-label">Cliente:</label>
-                        <select name="cliente_id" id="cliente_id" class="form-control form-control-sm selectpicker show-tick"
-                            data-live-search="true" title="Seleccione un cliente" data-size='5' required>
+                        <label class="form-label">Cliente:</label>
+                        <select name="cliente_id" id="cliente_id" class="form-control form-control-sm selectpicker show-tick" data-live-search="true" title="Seleccione un cliente" required>
                             @foreach ($clientes as $item)
                                 <option value="{{ $item->id }}">{{ $item->persona->razon_social }}</option>
                             @endforeach
                         </select>
-                        @error('cliente_id')
-                            <small class="text-danger">{{ '*' . $message }}</small>
-                        @enderror
                     </div>
-
-                    <!--Sucursal / Almacen-->
                     <div class="col-md-6">
-                        <label for="almacen_id" class="form-label">Sucursal:</label>
-                        <select name="almacen_id" id="almacen_id" class="form-control form-control-sm selectpicker"
-                            title="Seleccione sucursal" required>
+                        <label class="form-label">Sucursal:</label>
+                        <select name="almacen_id" id="almacen_id" class="form-control form-control-sm selectpicker" required>
                             @foreach ($almacenes as $item)
-                                <option value="{{ $item->id }}" {{ $loop->first ? 'selected' : '' }}>
-                                    {{ $item->nombre }}
-                                </option>
+                                <option value="{{ $item->id }}" {{ $loop->first ? 'selected' : '' }}>{{ $item->nombre }}</option>
                             @endforeach
                         </select>
-                        @error('almacen_id')
-                            <small class="text-danger">{{ '*' . $message }}</small>
-                        @enderror
                     </div>
-
-                    <!--Tipo de comprobante-->
                     <div class="col-md-4">
-                        <label for="comprobante_id" class="form-label">Comprobante:</label>
-                        <select name="comprobante_id" id="comprobante_id" class="form-control form-control-sm selectpicker"
-                            title="Seleccione tipo" required>
+                        <label class="form-label">Comprobante:</label>
+                        <select name="comprobante_id" id="comprobante_id" class="form-control form-control-sm selectpicker" required>
                             @foreach ($comprobantes as $item)
                                 <option value="{{ $item->id }}">{{ $item->tipo_comprobante }}</option>
                             @endforeach
                         </select>
-                        @error('comprobante_id')
-                            <small class="text-danger">{{ '*' . $message }}</small>
-                        @enderror
                     </div>
-
-                    <!--Numero de comprobante-->
                     <div class="col-md-2">
-                        <label for="numero_comprobante" class="form-label">Número:</label>
-                        <input type="text" name="numero_comprobante" id="numero_comprobante" 
-                               class="form-control form-control-sm" value="{{ $nextComprobanteNumber }}" readonly>
+                        <label class="form-label">Número:</label>
+                        <input type="text" name="numero_comprobante" class="form-control form-control-sm" value="{{ $nextComprobanteNumber }}" readonly>
                     </div>
-
-                    <!--Fecha-->
                     <div class="col-md-3">
-                        <label for="fecha" class="form-label">Fecha:</label>
-                        <input readonly type="date" name="fecha" id="fecha" class="form-control form-control-sm"
-                            value="{{ now()->format('Y-m-d') }}">
+                        <label class="form-label">Fecha:</label>
+                        <input type="date" class="form-control form-control-sm" value="{{ now()->format('Y-m-d') }}" readonly>
                         <input type="hidden" name="fecha_hora" value="{{ now()->toDateTimeString() }}">
                     </div>
-
-                    <!--User-->
                     <div class="col-md-3">
                         <label class="form-label">Vendedor:</label>
                         <input type="text" class="form-control form-control-sm" value="{{ auth()->user()->name }}" readonly>
-                        <input type="hidden" name="user_id" value="{{ auth()->user()->id }}">
+                        <input type="hidden" name="user_id" value="{{ auth()->id() }}">
                     </div>
                 </div>
             </div>
 
-            <!-- Sección de Detalles de Venta -->
             <div class="border-section">
-                <div class="section-title">
-                    <i class="fas fa-shopping-cart"></i> Detalles de la Venta
+                <div class="section-title"><i class="fas fa-shopping-cart"></i> Detalles de la Venta</div>
+                
+                <div class="search-wrapper mb-3">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="producto_search" class="form-control form-control-sm" placeholder="Buscar por código o nombre del producto...">
+                    <div class="products-dropdown" id="products_dropdown"></div>
                 </div>
 
-                <!-- Selección de Producto -->
-                <div class="row g-2 mb-3 compact-row">
-                    <div class="col-md-9">
-                        <label for="producto_select" class="form-label">Producto:</label>
-                        <select id="producto_select" class="form-control form-control-sm selectpicker show-tick" 
-                                data-live-search="true" title="Buscar producto..." data-size="5">
-                            @foreach ($productos as $producto)
-                                <option value="{{ $producto->id }}" 
-                                        data-codigo="{{ $producto->codigo }}"
-                                        data-nombre="{{ $producto->nombre }}"
-                                        data-precio="{{ $producto->precio_venta }}">
-                                    {{ $producto->codigo }} - {{ $producto->nombre }} 
-                                    (S/{{ number_format($producto->precio_venta, 2) }})
-                                </option>
-                            @endforeach
-                        </select>
+                <div class="product-selection-card" id="selection_card">
+                    <div class="selection-title">
+                        <span><i class="fas fa-box-open"></i> <span id="sel_name">Producto</span></span>
+                        <span id="sel_stock_badge" class="badge-stock stock-ok">Stock: 0</span>
                     </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button type="button" id="btn_seleccionar_producto" class="btn btn-primary btn-sm w-100">
-                            <i class="fas fa-search"></i> Seleccionar
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Información del Producto Seleccionado -->
-                <div class="product-info-card" id="producto_info" style="display: none;">
-                    <div class="product-info-title">
-                        <i class="fas fa-box"></i> Producto Seleccionado
-                    </div>
-                    <div class="row g-2 compact-row">
+                    <div class="row g-2 align-items-end">
                         <div class="col-md-3">
-                            <input type="text" id="producto_nombre" class="form-control form-control-sm" placeholder="Producto" readonly>
-                            <input type="hidden" id="producto_id">
+                            <label class="form-label">Código</label>
+                            <input type="text" id="sel_codigo" class="form-control form-control-sm bg-white" readonly>
                         </div>
-                        <div class="col-md-2">
-                            <input type="text" id="producto_codigo" class="form-control form-control-sm" placeholder="Código" readonly>
+                        <div class="col-md-3">
+                            <label class="form-label">Precio Venta (Bs.)</label>
+                            <input type="number" id="sel_precio" class="form-control form-control-sm" step="0.01">
                         </div>
-                        <div class="col-md-2">
-                            <input type="text" id="producto_stock" class="form-control form-control-sm" placeholder="Stock" readonly>
+                        <div class="col-md-3">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" id="sel_cantidad" class="form-control form-control-sm" value="1.000" step="0.001">
                         </div>
-                        <div class="col-md-2">
-                            <input type="number" id="producto_precio" class="form-control form-control-sm" 
-                                   placeholder="Precio" step="0.01" min="0.01">
-                        </div>
-                        <div class="col-md-2">
-                            <input type="number" id="producto_cantidad" class="form-control form-control-sm" 
-                                   value="1.000" placeholder="Cantidad" step="0.001" min="0.001">
-                        </div>
-                        <div class="col-md-1">
-                            <button type="button" id="btn_agregar_producto" class="btn btn-success btn-sm w-100">
-                                <i class="fas fa-plus"></i>
-                            </button>
+                        <div class="col-md-3">
+                            <button type="button" id="btn_add_item" class="btn btn-primary btn-sm w-100 h-32"><i class="fas fa-plus me-1"></i> Añadir a Tabla</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tabla de detalles -->
-                <div class="table-responsive mt-3">
+                <div class="table-responsive">
                     <table id="tabla_detalle" class="table table-sm table-bordered">
                         <thead class="table-light">
                             <tr>
-                                <th width="4%">#</th>
-                                <th width="30%">Producto</th>
-                                <th width="10%">Cantidad</th>
+                                <th width="5%">#</th>
+                                <th>Producto</th>
+                                <th width="12%">Cantidad</th>
                                 <th width="12%">P. Venta</th>
                                 <th width="12%">Descuento</th>
-                                <th width="10%">Stock</th>
-                                <th width="12%">Subtotal</th>
+                                <th width="15%">Subtotal</th>
                                 <th width="5%"></th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <!-- Contenido dinámico -->
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td colspan="6" class="text-end fw-bold">TOTAL:</td>
-                                <td colspan="2" class="fw-bold text-primary">
-                                    <input type="hidden" name="total" value="0" id="inputTotal">
-                                    <span id="total">S/ 0.00</span>
-                                </td>
-                            </tr>
-                        </tfoot>
+                        <tbody></tbody>
                     </table>
                 </div>
 
-                <!-- Nota Personal -->
-                <div class="row mt-3 compact-row">
-                    <div class="col-md-6">
-                        <label for="nota_personal" class="form-label">Nota Interna:</label>
-                        <textarea name="nota_personal" id="nota_personal" class="form-control form-control-sm" rows="2" 
-                                  placeholder="Nota personal (opcional)..."></textarea>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="nota_cliente" class="form-label">Nota Cliente:</label>
-                        <textarea name="nota_cliente" id="nota_cliente" class="form-control form-control-sm" rows="2" 
-                                  placeholder="Nota para el cliente (opcional)..."></textarea>
+                <div class="row justify-content-end">
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-between align-items-center p-2 bg-light border rounded">
+                            <span class="fw-bold">TOTAL VENTA:</span>
+                            <span class="fs-5 fw-bold text-primary">Bs. <span id="label_total">0.00</span></span>
+                            <input type="hidden" name="total" id="input_total" value="0">
+                        </div>
                     </div>
                 </div>
 
-                <!-- Botones de acción -->
-                <div class="d-flex justify-content-end gap-2 mt-3">
-                    <button id="cancelar" type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
-                        data-bs-target="#exampleModal" style="display: none;">
-                        <i class="fas fa-times"></i> Cancelar
-                    </button>
-                    <button type="submit" class="btn btn-success btn-sm" id="guardar" style="display: none;">
-                        <i class="fas fa-check"></i> Realizar Venta
-                    </button>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nota Interna:</label>
+                        <textarea name="nota_personal" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Nota Cliente:</label>
+                        <textarea name="nota_cliente" class="form-control form-control-sm" rows="2"></textarea>
+                    </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Modal cancelar -->
-        <div class="modal fade" id="exampleModal" tabindex="-1">
-            <div class="modal-dialog modal-sm">
-                <div class="modal-content">
-                    <div class="modal-header bg-warning py-2">
-                        <h6 class="modal-title">
-                            <i class="fas fa-exclamation-triangle"></i> Confirmar
-                        </h6>
-                        <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body py-2">
-                        <small>¿Cancelar venta? Se perderán los datos.</small>
-                    </div>
-                    <div class="modal-footer py-2">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
-                        <button id="btnCancelarVenta" type="button" class="btn btn-danger btn-sm" data-bs-dismiss="modal">
-                            Confirmar
-                        </button>
-                    </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button id="btn_cancelar" type="button" class="btn btn-outline-danger btn-sm px-4" style="display:none;">Cancelar</button>
+                    <button id="btn_guardar" type="submit" class="btn btn-success btn-sm px-5 fw-bold" style="display:none;">Realizar Venta</button>
                 </div>
             </div>
         </div>
@@ -321,278 +224,187 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Inicializar selectpickers
+            const PRODUCTOR_RAW = '{!! addslashes(json_encode($productos)) !!}';
+            const PRODUCTOS = JSON.parse(PRODUCTOR_RAW);
+            let itemsAgregados = new Set();
+            let selectedItem = null;
+            let rowCount = 0;
+
             $('.selectpicker').selectpicker();
-            
-            // Variables globales
-            let cont = 0;
-            let productosAgregados = new Set();
-            let productoActual = null;
-            
-            // Seleccionar producto
-            $('#btn_seleccionar_producto').click(function() {
-                const productoSelect = $('#producto_select');
-                const productoId = productoSelect.val();
+
+            // --- SEARCH LOGIC ---
+            $('#producto_search').on('input', function() {
+                const q = $(this).val().toLowerCase().trim();
+                const dropdown = $('#products_dropdown');
+                if (q.length < 1) { dropdown.hide(); return; }
                 
-                if (!productoId) {
-                    Swal.fire("Error", "Seleccione un producto", "error");
+                const matches = PRODUCTOS.filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)).slice(0, 10);
+                
+                dropdown.empty();
+                if (matches.length === 0) {
+                    dropdown.append('<div class="p-3 text-muted small text-center">No se encontraron productos</div>').show();
                     return;
                 }
-                
-                const almacenId = $('#almacen_id').val();
-                if (!almacenId) {
-                    Swal.fire("Error", "Seleccione una sucursal", "error");
-                    return;
-                }
-                
-                const productoOption = productoSelect.find('option:selected');
-                const productoNombre = productoOption.data('nombre');
-                const productoCodigo = productoOption.data('codigo');
-                const productoPrecio = parseFloat(productoOption.data('precio')) || 0;
-                
-                // Verificar stock
-                $.ajax({
-                    url: '{{ route("ventas.check-stock") }}',
-                    method: 'GET',
-                    data: {
-                        producto_id: productoId,
-                        almacen_id: almacenId
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            const stock = parseFloat(response.stock);
-                            
-                            $('#producto_info').fadeIn();
-                            $('#producto_id').val(productoId);
-                            $('#producto_nombre').val(productoNombre);
-                            $('#producto_codigo').val(productoCodigo);
-                            $('#producto_stock').val(stock.toFixed(4));
-                            $('#producto_precio').val(productoPrecio.toFixed(2));
-                            $('#producto_cantidad').val('1.000').focus();
-                            
-                            productoActual = {
-                                id: parseInt(productoId),
-                                nombre: productoNombre,
-                                codigo: productoCodigo,
-                                stock: stock,
-                                precio: productoPrecio
-                            };
-                        }
-                    },
-                    error: function() {
-                        Swal.fire("Error", "Error al verificar stock", "error");
+
+                matches.forEach(p => {
+                    const isAdded = itemsAgregados.has(p.id);
+                    const item = $(`
+                        <div class="product-item ${isAdded ? 'disabled' : ''}">
+                            <div>
+                                <div class="prod-main">${p.nombre}</div>
+                                <div class="prod-sub">${p.codigo}</div>
+                            </div>
+                            <div class="prod-price">Bs. ${parseFloat(p.precio_venta).toFixed(2)}</div>
+                        </div>
+                    `);
+                    
+                    if (!isAdded) {
+                        item.on('click', () => selectProduct(p));
                     }
+                    dropdown.append(item);
                 });
+                dropdown.show();
             });
-            
-            // Agregar producto a la tabla
-            $('#btn_agregar_producto').click(function() {
-                if (!productoActual) {
-                    Swal.fire("Error", "No hay producto seleccionado", "error");
-                    return;
+
+            $(document).on('click', (e) => {
+                if (!$(e.target).closest('.search-wrapper').length) $('#products_dropdown').hide();
+            });
+
+            async function selectProduct(p) {
+                $('#products_dropdown').hide();
+                $('#producto_search').val('');
+                
+                const storageId = $('#almacen_id').val();
+                
+                // Show loading state
+                Swal.showLoading();
+                
+                try {
+                    const res = await $.ajax({
+                        url: '{{ route("ventas.check-stock") }}',
+                        method: 'GET',
+                        data: { producto_id: p.id, almacen_id: storageId }
+                    });
+                    
+                    Swal.close();
+                    if (res.success) {
+                        selectedItem = { ...p, stock: parseFloat(res.stock) };
+                        $('#sel_name').text(p.nombre);
+                        $('#sel_codigo').val(p.codigo);
+                        $('#sel_precio').val(parseFloat(p.precio_venta).toFixed(2));
+                        $('#sel_cantidad').val('1.000').focus();
+                        
+                        const badge = $('#sel_stock_badge').text(`Stock: ${selectedItem.stock}`);
+                        badge.removeClass('stock-ok stock-low stock-out');
+                        if (selectedItem.stock <= 0) badge.addClass('stock-out');
+                        else if (selectedItem.stock < 10) badge.addClass('stock-low');
+                        else badge.addClass('stock-ok');
+
+                        $('#selection_card').slideDown();
+                    } else {
+                        Swal.fire("Error", "No se pudo consultar el stock", "error");
+                    }
+                } catch (err) {
+                    Swal.fire("Error", "Error en el servidor", "error");
                 }
+            }
+
+            // --- TABLE LOGIC ---
+            $('#btn_add_item').on('click', function() {
+                if (!selectedItem) return;
+                const qty = parseFloat($('#sel_cantidad').val()) || 0;
+                const price = parseFloat($('#sel_precio').val()) || 0;
+
+                if (qty <= 0) { Swal.fire("Error", "Ingrese una cantidad válida", "warning"); return; }
+                if (qty > selectedItem.stock) { Swal.fire("Stock Insuficiente", `Solo dispone de ${selectedItem.stock}`, "error"); return; }
+
+                addItem(selectedItem, qty, price);
+                $('#selection_card').hide();
+                selectedItem = null;
+            });
+
+            function addItem(p, qty, price) {
+                rowCount++;
+                itemsAgregados.add(p.id);
+                const sub = (qty * price).toFixed(2);
                 
-                const productoId = $('#producto_id').val();
-                const cantidad = parseFloat($('#producto_cantidad').val()) || 0;
-                const precio = parseFloat($('#producto_precio').val()) || 0;
-                const stock = parseFloat($('#producto_stock').val()) || 0;
-                
-                // Validaciones
-                if (productosAgregados.has(parseInt(productoId))) {
-                    Swal.fire("Advertencia", "Producto ya agregado", "warning");
-                    return;
-                }
-                
-                if (cantidad <= 0 || precio <= 0) {
-                    Swal.fire("Error", "Valores inválidos", "error");
-                    return;
-                }
-                
-                if (cantidad > stock) {
-                    Swal.fire("Error", `Stock insuficiente: ${stock.toFixed(4)}`, "error");
-                    return;
-                }
-                
-                // Agregar fila
-                cont++;
-                const stockRestante = stock - cantidad;
-                const subtotal = cantidad * precio;
-                
-                const fila = `
-                    <tr id="fila_${cont}" data-producto-id="${productoId}">
-                        <td>${cont}</td>
-                        <td class="small">
-                            <div class="fw-bold">${productoActual.nombre}</div>
-                            <small class="text-muted">${productoActual.codigo}</small>
-                            <input type="hidden" name="arrayidproducto[]" value="${productoId}">
-                        </td>
+                const row = `
+                    <tr id="row_${rowCount}" data-id="${p.id}">
+                        <td class="row-index">${rowCount}</td>
                         <td>
-                            <input type="number" name="arraycantidad[]" 
-                                   class="form-control form-control-sm cantidad" 
-                                   value="${cantidad.toFixed(4)}" min="0.001" step="0.001" required>
+                            <div class="fw-bold">${p.nombre}</div>
+                            <div class="small text-muted">${p.codigo}</div>
+                            <input type="hidden" name="arrayidproducto[]" value="${p.id}">
                         </td>
-                        <td>
-                            <input type="number" name="arrayprecioventa[]" 
-                                   class="form-control form-control-sm precio" 
-                                   value="${precio.toFixed(2)}" min="0.01" step="0.01" required>
-                        </td>
-                        <td>
-                            <input type="number" name="arraydescuento[]" 
-                                   class="form-control form-control-sm descuento" 
-                                   value="0.00" min="0" step="0.01">
-                        </td>
-                        <td class="${stockRestante < 10 ? 'stock-warning' : 'stock-normal'}">
-                            ${stockRestante.toFixed(4)}
-                        </td>
-                        <td class="subtotal fw-bold">
-                            ${subtotal.toFixed(2)}
-                        </td>
-                        <td>
-                            <button type="button" class="btn btn-outline-danger btn-sm btn-eliminar" onclick="eliminarFila(${cont}, ${productoId})">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
+                        <td><input type="number" name="arraycantidad[]" class="form-control form-control-sm t-qty" value="${qty.toFixed(3)}" step="0.001"></td>
+                        <td><input type="number" name="arrayprecioventa[]" class="form-control form-control-sm t-price" value="${price.toFixed(2)}" step="0.01"></td>
+                        <td><input type="number" name="arraydescuento[]" class="form-control form-control-sm t-desc" value="0.00" step="0.01"></td>
+                        <td class="text-end fw-bold">Bs. <span class="t-sub">${sub}</span></td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-link text-danger p-0 delete-row"><i class="fas fa-trash-alt"></i></button>
                         </td>
                     </tr>
                 `;
-                
-                $('#tabla_detalle tbody').append(fila);
-                productosAgregados.add(parseInt(productoId));
-                limpiarProducto();
-                calcularTotales();
-                mostrarBotones();
-            });
-            
-            // Cancelar venta
-            $('#btnCancelarVenta').click(function() {
-                $('#tabla_detalle tbody').empty();
-                cont = 0;
-                productosAgregados.clear();
-                limpiarProducto();
-                $('#producto_info').fadeOut();
-                calcularTotales();
-                $('#guardar, #cancelar').fadeOut();
-            });
-            
-            // Cambio de almacén
-            $('#almacen_id').on('changed.bs.select', function() {
-                if ($('#tabla_detalle tbody tr').length > 0) {
-                    Swal.fire({
-                        title: 'Cambiar Sucursal',
-                        text: 'Se limpiarán los productos actuales',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonText: 'Aceptar',
-                        cancelButtonText: 'Cancelar',
-                        confirmButtonColor: '#3085d6',
-                        cancelButtonColor: '#d33',
-                        customClass: {
-                            popup: 'swal2-sm'
-                        }
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            $('#tabla_detalle tbody').empty();
-                            cont = 0;
-                            productosAgregados.clear();
-                            limpiarProducto();
-                            $('#producto_info').fadeOut();
-                            calcularTotales();
-                            $('#guardar, #cancelar').fadeOut();
-                        } else {
-                            $(this).selectpicker('val', $(this).data('last-value') || '');
-                        }
-                    });
-                }
-                $(this).data('last-value', $(this).val());
-            });
-            
-            // Eventos para edición en línea
-            $(document).on('input', '.cantidad, .precio, .descuento', function() {
-                const fila = $(this).closest('tr');
-                actualizarFila(fila);
-            });
-        });
-        
-        function actualizarFila(fila) {
-            const cantidad = parseFloat(fila.find('.cantidad').val()) || 0;
-            const precio = parseFloat(fila.find('.precio').val()) || 0;
-            const descuento = parseFloat(fila.find('.descuento').val()) || 0;
-            
-            const subtotal = (cantidad * precio) - descuento;
-            fila.find('.subtotal').text(subtotal.toFixed(2));
-            
-            calcularTotales();
-        }
-        
-        function eliminarFila(filaId, productoId) {
-            $(`#fila_${filaId}`).remove();
-            productosAgregados.delete(productoId);
-            
-            // Renumerar
-            $('#tabla_detalle tbody tr').each(function(index) {
-                $(this).find('td').first().text(index + 1);
-            });
-            cont = $('#tabla_detalle tbody tr').length;
-            
-            calcularTotales();
-            if (cont === 0) {
-                $('#guardar, #cancelar').fadeOut();
+                $('#tabla_detalle tbody').append(row);
+                updateTotals();
+                checkVisibility();
             }
-        }
-        
-        function calcularTotales() {
-            let total = 0;
-            $('.subtotal').each(function() {
-                total += parseFloat($(this).text()) || 0;
+
+            $(document).on('input', '.t-qty, .t-price, .t-desc', function() {
+                const tr = $(this).closest('tr');
+                const q = parseFloat(tr.find('.t-qty').val()) || 0;
+                const p = parseFloat(tr.find('.t-price').val()) || 0;
+                const d = parseFloat(tr.find('.t-desc').val()) || 0;
+                const sub = ((q * p) - d).toFixed(2);
+                tr.find('.t-sub').text(sub);
+                updateTotals();
             });
-            $('#total').text('S/ ' + total.toFixed(2));
-            $('#inputTotal').val(total.toFixed(2));
-        }
-        
-        function limpiarProducto() {
-            $('#producto_id').val('');
-            $('#producto_nombre').val('');
-            $('#producto_codigo').val('');
-            $('#producto_stock').val('');
-            $('#producto_precio').val('');
-            $('#producto_cantidad').val('1.000');
-            productoActual = null;
-            $('#producto_select').selectpicker('val', '');
-        }
-        
-        function mostrarBotones() {
-            if ($('#tabla_detalle tbody tr').length > 0) {
-                $('#guardar, #cancelar').fadeIn();
-            }
-        }
-        
-        // Validar formulario
-        $('#ventaForm').submit(function(e) {
-            if ($('#tabla_detalle tbody tr').length === 0) {
-                e.preventDefault();
-                Swal.fire("Error", "Agregue al menos un producto", "error");
-                return false;
-            }
-            
-            // Validar que no haya stock negativo
-            let error = false;
-            $('#tabla_detalle tbody tr').each(function() {
-                const stockCell = $(this).find('td').eq(5);
-                const stockText = stockCell.text();
-                const stock = parseFloat(stockText);
-                
-                if (stock < 0) {
-                    error = true;
-                    stockCell.addClass('text-danger fw-bold');
-                }
+
+            $(document).on('click', '.delete-row', function() {
+                const tr = $(this).closest('tr');
+                itemsAgregados.delete(parseInt(tr.data('id')));
+                tr.remove();
+                renumber();
+                updateTotals();
+                checkVisibility();
             });
-            
-            if (error) {
-                e.preventDefault();
-                Swal.fire("Error", "Hay productos con stock insuficiente", "error");
-                return false;
+
+            function renumber() {
+                $('#tabla_detalle tbody tr').each((i, el) => $(el).find('.row-index').text(i + 1));
             }
-            
-            return true;
+
+            function updateTotals() {
+                let total = 0;
+                $('.t-sub').each(function() { total += parseFloat($(this).text()) || 0; });
+                $('#label_total').text(total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#input_total').val(total.toFixed(2));
+            }
+
+            function checkVisibility() {
+                const count = $('#tabla_detalle tbody tr').length;
+                if (count > 0) { $('#btn_guardar, #btn_cancelar').fadeIn(); }
+                else { $('#btn_guardar, #btn_cancelar').fadeOut(); }
+            }
+
+            $('#btn_cancelar').on('click', function() {
+                Swal.fire({
+                    title: '¿Está seguro?',
+                    text: "Se borrarán todos los items agregados.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'Sí, cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $('#tabla_detalle tbody').empty();
+                        itemsAgregados.clear();
+                        rowCount = 0;
+                        updateTotals();
+                        checkVisibility();
+                        $('#selection_card').hide();
+                    }
+                });
+            });
         });
     </script>
 @endpush

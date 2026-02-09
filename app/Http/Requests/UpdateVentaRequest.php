@@ -24,7 +24,7 @@ class UpdateVentaRequest extends FormRequest
         return [
             // Datos generales
             'fecha_hora' => 'required|date|before_or_equal:now',
-            'numero_comprobante' => 'required|string|max:255|unique:ventas,numero_comprobante,' . $ventaId,
+            'numero_comprobante' => 'nullable|string|max:255|unique:ventas,numero_comprobante,' . $ventaId,
             'total' => 'required|numeric|min:0.01',
             'cliente_id' => 'required|exists:clientes,id',
             'comprobante_id' => 'required|exists:comprobantes,id',
@@ -88,20 +88,21 @@ class UpdateVentaRequest extends FormRequest
         $rawPreciosVenta = $this->arrayprecioventa ?? [];
         $rawDescuentos = $this->arraydescuento ?? [];
 
+        $filteredProductIds = [];
         $cantidades = [];
         $preciosVenta = [];
         $descuentos = [];
-
         foreach ($arrayidproducto as $idx => $pid) {
             if (empty($pid)) continue;
 
+            $filteredProductIds[] = (int)$pid;
             $cantidades[] = floatval($rawCantidades[$idx] ?? 0);
             $preciosVenta[] = floatval($rawPreciosVenta[$idx] ?? 0);
             $descuentos[] = floatval($rawDescuentos[$idx] ?? 0);
         }
 
         $this->merge([
-            'arrayidproducto' => $arrayidproducto,
+            'arrayidproducto' => $filteredProductIds,
             'arraycantidad' => $cantidades,
             'arrayprecioventa' => $preciosVenta,
             'arraydescuento' => $descuentos,

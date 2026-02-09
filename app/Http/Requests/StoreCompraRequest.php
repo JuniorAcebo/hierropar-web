@@ -16,7 +16,7 @@ class StoreCompraRequest extends FormRequest
         return [
             // Datos generales
             'fecha_hora' => 'required|date|before_or_equal:now',
-            'numero_comprobante' => 'required|string|max:255|unique:compras,numero_comprobante',
+            'numero_comprobante' => 'nullable|string|max:255|unique:compras,numero_comprobante',
             'total' => 'required|numeric|min:0.01',
             'proveedor_id' => 'required|exists:proveedores,id',
             'user_id' => 'required|exists:users,id',

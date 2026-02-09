@@ -17,7 +17,7 @@ class UpdateCompraRequest extends FormRequest
         $compraId = is_object($routeCompra) ? $routeCompra->id : $routeCompra;
 
         return [
-            'numero_comprobante' => 'required|string|max:255|unique:compras,numero_comprobante,' . $compraId,
+            'numero_comprobante' => 'nullable|string|max:255|unique:compras,numero_comprobante,' . $compraId,
             'total' => 'required|numeric|min:0.01',
             'proveedor_id' => 'required|exists:proveedores,id',
             'comprobante_id' => 'required|exists:comprobantes,id',
@@ -49,12 +49,33 @@ class UpdateCompraRequest extends FormRequest
 
     protected function prepareForValidation()
     {
-        // Solo nos aseguramos de que el total sea un número decimal para la base de datos
-        if ($this->has('total')) {
-            $this->merge([
-                'total' => floatval(str_replace(',', '', $this->total))
-            ]);
+        // Normalizar arrays para evitar keys faltantes
+        $arrayidproducto = array_values($this->arrayidproducto ?? []);
+        $rawCantidades = $this->arraycantidad ?? [];
+        $rawPreciosCompra = $this->arraypreciocompra ?? [];
+        $rawPreciosVenta = $this->arrayprecioventa ?? [];
+
+        $filteredProductIds = [];
+        $cantidades = [];
+        $preciosCompra = [];
+        $preciosVenta = [];
+
+        foreach ($arrayidproducto as $idx => $pid) {
+            if (empty($pid)) continue;
+
+            $filteredProductIds[] = (int)$pid;
+            $cantidades[] = floatval($rawCantidades[$idx] ?? 0);
+            $preciosCompra[] = floatval($rawPreciosCompra[$idx] ?? 0);
+            $preciosVenta[] = floatval($rawPreciosVenta[$idx] ?? 0);
         }
+
+        $this->merge([
+            'arrayidproducto' => $filteredProductIds,
+            'arraycantidad' => $cantidades,
+            'arraypreciocompra' => $preciosCompra,
+            'arrayprecioventa' => $preciosVenta,
+            'total' => floatval($this->total ?? 0)
+        ]);
     }
 
     public function withValidator($validator)

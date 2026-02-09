@@ -1,752 +1,354 @@
 @extends('layouts.app')
 
+@section('title', 'Editar venta')
+
 @push('css')
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --success-gradient: linear-gradient(135deg, #00b09b, #96c93d);
-            --danger-gradient: linear-gradient(135deg, #ff416c, #ff4b2b);
-            --warning-gradient: linear-gradient(135deg, #f59e0b, #fbbf24);
-            --info-gradient: linear-gradient(135deg, #3498db, #2980b9);
-            --border-color: #e5e7eb;
-            --text-primary: #2c3e50;
-            --text-secondary: #718096;
-        }
-
-        /* ========== ESTILOS COMPACTOS ========== */
-        .container {
-            max-width: 1400px;
-            margin: 1rem auto;
-            padding: 0 1rem;
-        }
-
-        h1 {
-            color: var(--text-primary);
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-            text-align: center;
-            background: linear-gradient(135deg, var(--text-primary), #667eea);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            padding-bottom: 0.5rem;
-            border-bottom: 2px solid;
-            border-image: var(--primary-gradient) 1;
-        }
-
-        /* ========== SECCIONES COMPACTAS ========== */
         .border-section {
-            background: white;
-            border: none;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .border-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--primary-gradient);
-        }
-
-        .section-title {
-            background: var(--primary-gradient);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin: -20px -20px 20px -20px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .section-title i {
-            font-size: 1.2rem;
-        }
-
-        /* ========== FORMULARIOS COMPACTOS ========== */
-        .form-group {
-            margin-bottom: 1rem;
-        }
-
-        label {
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-            font-size: 0.9rem;
-            display: block;
-        }
-
-        .form-control {
-            padding: 10px 12px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
             background: #fff;
         }
-
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
-            outline: none;
-        }
-
-        .form-control:read-only {
-            background-color: #f8f9fa;
-            color: #6c757d;
-        }
-
-        /* ========== GRID COMPACTO ========== */
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-            margin: 0 -8px;
-        }
-
-        .col-md-6,
-        .col-md-4,
-        .col-md-2 {
-            padding: 0 8px;
-            box-sizing: border-box;
-            margin-bottom: 0.8rem;
-        }
-
-        .col-md-6 {
-            flex: 0 0 50%;
-            max-width: 50%;
-        }
-
-        .col-md-4 {
-            flex: 0 0 33.333%;
-            max-width: 33.333%;
-        }
-
-        .col-md-2 {
-            flex: 0 0 16.666%;
-            max-width: 16.666%;
-        }
-
-        /* ========== PRODUCTOS COMPACTOS ========== */
-        .producto-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding: 15px;
-            background: linear-gradient(135deg, #fafbfc, #f8f9fa);
-            border-radius: 8px;
-            border: 1px solid #f1f3f4;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .producto-row:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-
-        .producto-info {
-            position: absolute;
-            top: -8px;
-            right: 12px;
-            background: var(--info-gradient);
-            color: white;
-            padding: 3px 10px;
-            border-radius: 15px;
-            font-size: 0.7rem;
+        .section-title {
+            font-size: 16px;
             font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
         }
-
-        .input-group {
-            position: relative;
+        .section-title i { margin-right: 8px; color: #3498db; }
+        .form-label { font-weight: 500; font-size: 13px; margin-bottom: 4px; color: #495057; }
+        .form-control-sm { font-size: 13px; padding: 4px 8px; height: 32px; }
+        
+        .search-wrapper { position: relative; }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 4; }
+        #producto_search { padding-left: 35px; border-radius: 4px; }
+        
+        .products-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #dee2e6;
+            border-radius: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 350px; overflow-y: auto; display: none;
         }
-
-        .input-group-text {
-            background: var(--primary-gradient);
-            color: white;
-            border: none;
-            border-radius: 6px 0 0 6px;
-            font-weight: 600;
-            min-width: 35px;
-            justify-content: center;
-            font-size: 0.8rem;
-            padding: 0 8px;
+        .product-item {
+            padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f1f1f1; display: flex; justify-content: space-between; align-items: center;
         }
+        .product-item:hover { background-color: #f8f9fa; }
+        .product-item.disabled { opacity: 0.5; cursor: not-allowed; }
+        .product-item .prod-main { font-weight: 500; color: #333; font-size: 13px; }
+        .product-item .prod-sub { font-size: 11px; color: #6c757d; }
+        .product-item .prod-price { font-weight: 600; color: #28a745; font-size: 11px; }
 
-        .input-group .form-control {
-            border-radius: 0 6px 6px 0;
-            border-left: none;
+        .product-selection-card {
+            background-color: #f8fbff; border: 1px solid #d1e3ff; border-radius: 6px; padding: 15px; margin-bottom: 15px; display: none;
         }
+        .selection-title { font-size: 14px; font-weight: 700; color: #0056b3; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        
+        .badge-stock { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .stock-ok { background-color: #d1ecf1; color: #0c5460; }
+        .stock-low { background-color: #fff3cd; color: #856404; }
+        .stock-out { background-color: #f8d7da; color: #721c24; }
 
-        /* ========== BOTONES COMPACTOS ========== */
-        .btn {
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .btn-primary {
-            background: var(--primary-gradient);
-            color: white;
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-success {
-            background: var(--success-gradient);
-            color: white;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-danger {
-            background: var(--danger-gradient);
-            color: white;
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #6c757d, #5a6268);
-            color: white;
-            box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
-        }
-
-        .btn-sm {
-            padding: 8px 12px;
-            font-size: 0.8rem;
-        }
-
-        .btn i {
-            font-size: 1rem;
-        }
-
-        /* ========== SELECT2 COMPACTO ========== */
-        .select2-container--default .select2-selection--single {
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            height: auto;
-            padding: 10px;
-        }
-
-        .select2-container--default .select2-selection--single:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
-        }
-
-        /* ========== TOTAL COMPACTO ========== */
-        .total-container {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            padding: 20px;
-            border-radius: 8px;
-            border: 2px solid #e9ecef;
-            margin-top: 1.5rem;
-        }
-
-        .total-highlight {
-            background: linear-gradient(135deg, #fff9c4, #fff176);
-            padding: 10px 16px;
-            border-radius: 8px;
-            font-weight: 700;
-            color: #7d6608;
-            border-left: 3px solid #f59e0b;
-            font-size: 1.1rem;
-        }
-
-        /* ========== BOTONES DE ACCIÓN ========== */
-        .action-buttons {
-            display: flex;
-            gap: 12px;
-            margin-top: 1.5rem;
-            justify-content: flex-start;
-        }
-
-        /* ========== INFORMACIÓN DE STOCK ========== */
-        .stock-info {
-            background: linear-gradient(135deg, #d1ecf1, #bee5eb);
-            padding: 6px 10px;
-            border-radius: 5px;
-            font-weight: 600;
-            color: #0c5460;
-            border-left: 2px solid #17a2b8;
-            margin-top: 4px;
-            font-size: 0.8rem;
-        }
-
-        /* ========== RESPONSIVE COMPACTO ========== */
-        @media (max-width: 1200px) {
-            .producto-row {
-                flex-wrap: wrap;
-            }
-
-            .col-md-4,
-            .col-md-2 {
-                flex: 0 0 50%;
-                max-width: 50%;
-                margin-bottom: 0.8rem;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                margin: 0.5rem auto;
-                padding: 0 0.8rem;
-            }
-
-            .border-section {
-                padding: 15px;
-            }
-
-            .section-title {
-                margin: -15px -15px 15px -15px;
-                padding: 10px 15px;
-                font-size: 1rem;
-            }
-
-            .col-md-6,
-            .col-md-4,
-            .col-md-2 {
-                flex: 0 0 100%;
-                max-width: 100%;
-            }
-
-            .producto-row {
-                padding: 12px;
-            }
-
-            .action-buttons {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            h1 {
-                font-size: 1.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .producto-row>div {
-                margin-bottom: 0.8rem;
-            }
-
-            .remove-producto {
-                width: 100%;
-            }
-        }
-
-        /* ========== UTILIDADES COMPACTAS ========== */
-        .text-muted {
-            color: var(--text-secondary) !important;
-            font-size: 0.8rem;
-            margin-top: 3px;
-            display: block;
-        }
-
-        .mt-4 {
-            margin-top: 1.5rem;
-        }
-
-        .mt-3 {
-            margin-top: 1rem;
-        }
-
-        .mb-3 {
-            margin-bottom: 1rem;
-        }
-
-        /* ========== ESTADOS DE VALIDACIÓN ========== */
-        .is-invalid {
-            border-color: #ef4444 !important;
-            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1) !important;
-        }
+        .h-32 { height: 32px !important; }
     </style>
 @endpush
 
 @section('content')
-    <div class="container">
-        <h1><i class="fas fa-edit me-2"></i>Editar Venta</h1>
-
-        <form action="{{ route('ventas.update', $venta->id) }}" method="POST">
-            @csrf
-            @method('PUT')
-
-            <!-- Sección de Datos Generales -->
-            <div class="border-section">
-                <div class="section-title">
-                    <i class="fas fa-info-circle"></i>
-                    Datos Generales
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="numero_comprobante"><i class="fas fa-receipt me-1"></i>N° Comprobante</label>
-                            <input type="text" class="form-control" id="numero_comprobante" name="numero_comprobante"
-                                value="{{ $venta->numero_comprobante }}" readonly>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="fecha_hora"><i class="fas fa-calendar me-1"></i>Fecha</label>
-                            <input type="datetime-local" class="form-control" id="fecha_hora" name="fecha_hora"
-                                value="{{ \Carbon\Carbon::parse($venta->fecha_hora)->format('Y-m-d\TH:i') }}">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Campos ocultos requeridos -->
-                <input type="hidden" name="user_id" value="{{ auth()->id() }}">
-
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="almacen_id"><i class="fas fa-warehouse me-1"></i>Sucursal/Almacén</label>
-                            <select class="form-control" id="almacen_id" name="almacen_id" required>
-                                <option value="">Seleccione almacén</option>
-                                @foreach ($almacenes as $almacen)
-                                    <option value="{{ $almacen->id }}" {{ $venta->almacen_id == $almacen->id ? 'selected' : '' }}>
-                                        {{ $almacen->nombre }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="cliente_id"><i class="fas fa-user me-1"></i>Cliente</label>
-                            <select class="form-control select2-search" id="cliente_id" name="cliente_id" required>
-                                <option value="">Seleccione cliente</option>
-                                @foreach ($clientes as $cliente)
-                                    @if ($cliente->persona)
-                                        <option value="{{ $cliente->id }}" @selected($venta->cliente_id == $cliente->id)>
-                                            {{ $cliente->persona->razon_social ?? 'Cliente sin nombre' }}
-                                            ({{ $cliente->persona->numero_documento ?? '' }})
-                                        </option>
-                                    @endif
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="comprobante_id"><i class="fas fa-file-invoice me-1"></i>Comprobante</label>
-                            <select class="form-control" id="comprobante_id" name="comprobante_id" required>
-                                @foreach ($comprobantes as $comprobante)
-                                    <option value="{{ $comprobante->id }}"
-                                        {{ $venta->comprobante_id == $comprobante->id ? 'selected' : '' }}>
-                                        {{ $comprobante->tipo_comprobante }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sección de Productos -->
-            <div class="border-section">
-                <div class="section-title">
-                    <i class="fas fa-boxes"></i>
-                    Productos de la Venta
-                </div>
-
-                <div class="card-body">
-                    <div id="productos-container">
-                        @foreach ($venta->detalles as $detalle)
-                            <div class="producto-row">
-                                <div class="col-md-4">
-                                    <select class="form-control select2-producto" name="arrayidproducto[]" required>
-                                        <option value="">Seleccione producto</option>
-                                        @foreach ($productos as $prod)
-                                            <option value="{{ $prod->id }}"
-                                                {{ $detalle->producto_id == $prod->id ? 'selected' : '' }}
-                                                data-precio="{{ $prod->precio_venta }}" data-stock="{{ $prod->stock }}">
-                                                {{ $prod->nombre }} (Stock: {{ $prod->stock }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <small class="text-muted">Producto</small>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" step="0.0001" class="form-control cantidad"
-                                        name="arraycantidad[]" value="{{ $detalle->cantidad }}" min="0.0001"
-                                        required>
-                                    <small class="text-muted">Cantidad</small>
-                                </div>
-
-                                <div class="col-md-2">
-                                    <div class="input-group">
-                                        <span class="input-group-text">$</span>
-                                        <input type="number" step="0.01" class="form-control precio-venta"
-                                            name="arrayprecioventa[]" value="{{ $detalle->precio_venta }}"
-                                            required>
-                                    </div>
-                                    <small class="text-muted">Precio venta</small>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="input-group">
-                                        <span class="input-group-text">$</span>
-                                        <input type="number" step="0.01" class="form-control descuento"
-                                            name="arraydescuento[]" value="{{ $detalle->descuento ?? 0 }}">
-                                    </div>
-                                    <small class="text-muted">Descuento</small>
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="button" class="btn btn-danger btn-sm remove-producto">
-                                        <i class="fas fa-trash me-1"></i>Eliminar
-                                    </button>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <button type="button" id="add-producto" class="btn btn-primary mt-3">
-                        <i class="fas fa-plus-circle me-2"></i>Agregar Producto
-                    </button>
-                </div>
-            </div>
-
-            <!-- Sección del Total -->
-            <div class="border-section">
-                <div class="section-title">
-                    <i class="fas fa-calculator"></i>
-                    Total de la Venta
-                </div>
-
-                <div class="total-container">
-                    <label for="total"><i class="fas fa-dollar-sign me-1"></i>Total de la Venta</label>
-                    <div class="input-group">
-                        <span class="input-group-text">$</span>
-                        <input type="number" step="0.01" class="form-control total-highlight" id="total"
-                            name="total" value="{{ $venta->total }}" readonly>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sección de Notas -->
-            <div class="border-section">
-                <div class="section-title">
-                    <i class="fas fa-sticky-note"></i>
-                    Notas
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="nota_personal"><i class="fas fa-lock me-1"></i>Nota Interna</label>
-                            <textarea class="form-control" id="nota_personal" name="nota_personal" rows="3" 
-                                placeholder="Nota privada/interna (solo para el sistema)...">{{ $venta->nota_personal ?? '' }}</textarea>
-                            <small class="text-muted">Esta nota solo es visible en el sistema</small>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="nota_cliente"><i class="fas fa-user me-1"></i>Nota Cliente</label>
-                            <textarea class="form-control" id="nota_cliente" name="nota_cliente" rows="3" 
-                                placeholder="Nota para el cliente (se puede mostrar en documentos)...">{{ $venta->nota_cliente ?? '' }}</textarea>
-                            <small class="text-muted">Esta nota puede ser visible para el cliente</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Botones de Acción -->
-            <div class="action-buttons">
-                <button type="submit" class="btn btn-success">
-                    <i class="fas fa-save me-2"></i>Guardar Cambios
-                </button>
-                <a href="{{ route('ventas.index') }}" class="btn btn-secondary">
-                    <i class="fas fa-times me-2"></i>Cancelar
-                </a>
-            </div>
-        </form>
+    @include('layouts.partials.alert')
+    <div class="container-fluid px-4">
+        <h1 class="mt-4 fs-4 fw-bold">Editar Venta #{{ str_pad($venta->id, 8, '0', STR_PAD_LEFT) }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{{ route('panel') }}">Inicio</a></li>
+                <li class="breadcrumb-item"><a href="{{ route('ventas.index') }}">Ventas</a></li>
+                <li class="breadcrumb-item active">Editar</li>
+            </ol>
+        </nav>
     </div>
+
+    <form action="{{ route('ventas.update', $venta->id) }}" method="post" id="ventaForm">
+        @csrf
+        @method('PUT')
+        <div class="container-lg">
+            <div class="border-section">
+                <div class="section-title"><i class="fas fa-edit"></i> Encabezado de Venta</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Cliente:</label>
+                        <select name="cliente_id" id="cliente_id" class="form-control form-control-sm selectpicker show-tick" data-live-search="true" title="Seleccione cliente" required>
+                            @foreach ($clientes as $item)
+                                <option value="{{ $item->id }}" {{ $venta->cliente_id == $item->id ? 'selected' : '' }}>
+                                    {{ $item->persona->razon_social }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Sucursal:</label>
+                        <select name="almacen_id" id="almacen_id" class="form-control form-control-sm selectpicker" required>
+                            @foreach ($almacenes as $item)
+                                <option value="{{ $item->id }}" {{ $venta->almacen_id == $item->id ? 'selected' : '' }}>
+                                    {{ $item->nombre }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Comprobante:</label>
+                        <select name="comprobante_id" id="comprobante_id" class="form-control form-control-sm selectpicker" required>
+                            @foreach ($comprobantes as $item)
+                                <option value="{{ $item->id }}" {{ $venta->comprobante_id == $item->id ? 'selected' : '' }}>
+                                    {{ $item->tipo_comprobante }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Número:</label>
+                        <input type="text" name="numero_comprobante" class="form-control form-control-sm" value="{{ $venta->numero_comprobante }}" readonly>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Fecha Venta:</label>
+                        <input type="datetime-local" name="fecha_hora" class="form-control form-control-sm" value="{{ \Carbon\Carbon::parse($venta->fecha_hora)->format('Y-m-d\TH:i') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Vendedor:</label>
+                        <input type="text" class="form-control form-control-sm" value="{{ $venta->user->name }}" readonly>
+                        <input type="hidden" name="user_id" value="{{ $venta->user_id }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-section">
+                <div class="section-title"><i class="fas fa-boxes"></i> Artículos de la Venta</div>
+                
+                <div class="search-wrapper mb-3">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="producto_search" class="form-control form-control-sm" placeholder="Añadir más productos a esta venta...">
+                    <div class="products-dropdown" id="products_dropdown"></div>
+                </div>
+
+                <div class="product-selection-card" id="selection_card">
+                    <div class="selection-title">
+                        <span><i class="fas fa-plus-circle"></i> <span id="sel_name">Producto</span></span>
+                        <span id="sel_stock_badge" class="badge-stock stock-ok">Stock: 0</span>
+                    </div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Código</label>
+                            <input type="text" id="sel_codigo" class="form-control form-control-sm bg-white" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Precio Venta (Bs.)</label>
+                            <input type="number" id="sel_precio" class="form-control form-control-sm" step="0.01">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" id="sel_cantidad" class="form-control form-control-sm" value="1.000" step="0.001">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" id="btn_add_item" class="btn btn-primary btn-sm w-100 h-32"><i class="fas fa-plus me-1"></i> Añadir Item</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table id="tabla_detalle" class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="5%">#</th>
+                                <th>Producto</th>
+                                <th width="12%">Cantidad</th>
+                                <th width="12%">P. Venta</th>
+                                <th width="12%">Descuento</th>
+                                <th width="15%">Subtotal</th>
+                                <th width="5%"></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="row justify-content-end">
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-between align-items-center p-2 bg-light border rounded">
+                            <span class="fw-bold">TOTAL VENTA:</span>
+                            <span class="fs-5 fw-bold text-primary">Bs. <span id="label_total">0.00</span></span>
+                            <input type="hidden" name="total" id="input_total" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nota Interna:</label>
+                        <textarea name="nota_personal" class="form-control form-control-sm" rows="2">{{ $venta->nota_personal }}</textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Nota Cliente:</label>
+                        <textarea name="nota_cliente" class="form-control form-control-sm" rows="2">{{ $venta->nota_cliente }}</textarea>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{{ route('ventas.index') }}" class="btn btn-outline-secondary btn-sm px-4">Volver</a>
+                    <button id="btn_guardar" type="submit" class="btn btn-primary btn-sm px-5 fw-bold">Actualizar Venta</button>
+                </div>
+            </div>
+        </div>
+    </form>
 @endsection
 
 @push('js')
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script>
-    <!-- AGREGAR SWEETALERT2 -->
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
     <script>
         $(document).ready(function() {
-            console.log('Documento cargado - Iniciando Select2');
+            const PRODUCTOR_RAW = '{!! addslashes(json_encode($productos)) !!}';
+            const PRODUCTOS = JSON.parse(PRODUCTOR_RAW);
+            const EXISTENTES = @json($venta->detalles->load('producto'));
+            let itemsAgregados = new Set();
+            let selectedItem = null;
+            let rowCount = 0;
 
-            // Inicializar Select2 para clientes
-            $('.select2-search').select2({
-                placeholder: "Buscar cliente...",
-                language: "es",
-                width: '100%'
+            $('.selectpicker').selectpicker();
+
+            // --- LOAD DATA ---
+            EXISTENTES.forEach(det => {
+                addItem(det.producto, parseFloat(det.cantidad), parseFloat(det.precio_venta), parseFloat(det.descuento || 0));
             });
 
-            function actualizarPrecioYStock(selectElement, updatePrice = true) {
-                const selectedValue = $(selectElement).val();
-                if (!selectedValue) return;
-
-                const originalOption = $(selectElement).find('option[value="' + selectedValue + '"]');
-                const precio = originalOption.data('precio');
-                const stock = originalOption.data('stock');
-
-                console.log('Producto:', selectedValue, 'Precio:', precio, 'Stock:', stock);
-
-                if (updatePrice && precio && precio !== '') {
-                    $(selectElement).closest('.producto-row').find('.precio-venta').val(precio);
-                } else {
-                    console.log('Precio no actualizado (modo carga inicial o precio no disponible)');
+            // --- SEARCH LOGIC ---
+            $('#producto_search').on('input', function() {
+                const q = $(this).val().toLowerCase().trim();
+                const dropdown = $('#products_dropdown');
+                if (q.length < 1) { dropdown.hide(); return; }
+                
+                const matches = PRODUCTOS.filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)).slice(0, 10);
+                
+                dropdown.empty();
+                if (matches.length === 0) {
+                    dropdown.append('<div class="p-3 text-muted small text-center">No encontrado</div>').show();
+                    return;
                 }
 
-                if (stock) {
-                    $(selectElement).closest('.producto-row').find('.cantidad').attr('max', stock);
-                }
-                calcularTotal();
-            }
-
-            // Inicializar Select2 para productos
-            function initSelect2ForProducts() {
-                $('.select2-producto').select2({
-                    placeholder: "Buscar producto...",
-                    language: "es",
-                    width: '100%'
-                }).on('change', function() {
-                    actualizarPrecioYStock(this, true);
+                matches.forEach(p => {
+                    const isAdded = itemsAgregados.has(p.id);
+                    const item = $(`
+                        <div class="product-item ${isAdded ? 'disabled' : ''}">
+                            <div>
+                                <div class="prod-main">${p.nombre}</div>
+                                <div class="prod-sub">${p.codigo}</div>
+                            </div>
+                            <div class="prod-price">Bs. ${parseFloat(p.precio_venta).toFixed(2)}</div>
+                        </div>
+                    `);
+                    
+                    if (!isAdded) item.on('click', () => selectProduct(p));
+                    dropdown.append(item);
                 });
+                dropdown.show();
+            });
 
-                // Actualizar productos existentes
-                $('.select2-producto').each(function() {
-                    if ($(this).val()) {
-                        actualizarPrecioYStock(this, false); // No sobrescribir precio al cargar
-                    }
-                });
-            }
-
-            // Inicializar Select2 para productos existentes
-            initSelect2ForProducts();
-
-            // Evitar productos repetidos
-            $(document).on('change', '.select2-producto', function() {
-                const seleccionActual = $(this).val();
-                let repetido = false;
-
-                $('.select2-producto').not(this).each(function() {
-                    if ($(this).val() == seleccionActual && seleccionActual !== "") {
-                        repetido = true;
-                    }
-                });
-
-                if (repetido) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Producto duplicado',
-                        text: 'Este producto ya fue agregado. No puedes agregarlo dos veces.',
-                        confirmButtonText: 'Entendido',
-                        confirmButtonColor: '#667eea',
-                        background: '#fff'
+            async function selectProduct(p) {
+                $('#products_dropdown').hide();
+                $('#producto_search').val('');
+                const storageId = $('#almacen_id').val();
+                
+                Swal.showLoading();
+                try {
+                    const res = await $.ajax({
+                        url: '{{ route("ventas.check-stock") }}',
+                        method: 'GET',
+                        data: { producto_id: p.id, almacen_id: storageId }
                     });
-                    $(this).val('').trigger('change');
-                }
-            });
+                    Swal.close();
+                    if (res.success) {
+                        selectedItem = { ...p, stock: parseFloat(res.stock) };
+                        $('#sel_name').text(p.nombre);
+                        $('#sel_codigo').val(p.codigo);
+                        $('#sel_precio').val(parseFloat(p.precio_venta).toFixed(2));
+                        $('#sel_cantidad').val('1.000').focus();
+                        
+                        const badge = $('#sel_stock_badge').text(`Stock: ${selectedItem.stock}`);
+                        badge.removeClass('stock-ok stock-low stock-out');
+                        if (selectedItem.stock <= 0) badge.addClass('stock-out');
+                        else if (selectedItem.stock < 10) badge.addClass('stock-low');
+                        else badge.addClass('stock-ok');
 
-            // Agregar nuevo producto
-            $('#add-producto').click(function() {
-                console.log('Agregando nuevo producto');
-
-                const newRow = `
-                    <div class="producto-row">
-                        <div class="col-md-4">
-                            <select class="form-control select2-producto" name="arrayidproducto[]" required>
-                                <option value="">Seleccione producto</option>
-                                @foreach ($productos as $prod)
-                                    <option value="{{ $prod->id }}"
-                                        data-precio="{{ $prod->precio_venta }}"
-                                        data-stock="{{ $prod->stock }}">
-                                        {{ $prod->nombre }} (Stock: {{ $prod->stock }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">Producto</small>
-                        </div>
-                        <div class="col-md-2">
-                            <input type="number" step="0.0001" class="form-control cantidad" name="arraycantidad[]" min="0.0001" required>
-                            <small class="text-muted">Cantidad</small>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" class="form-control precio-venta" name="arrayprecioventa[]" required>
-                            </div>
-                            <small class="text-muted">Precio venta</small>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" class="form-control descuento" name="arraydescuento[]" value="0">
-                            </div>
-                            <small class="text-muted">Descuento</small>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-danger btn-sm remove-producto">
-                                <i class="fas fa-trash me-1"></i>Eliminar
-                            </button>
-                        </div>
-                    </div>`;
-
-                $('#productos-container').append(newRow);
-                initSelect2ForProducts();
-            });
-
-            // Eliminar producto
-            $(document).on('click', '.remove-producto', function() {
-                $(this).closest('.producto-row').remove();
-                calcularTotal();
-            });
-
-            // Calcular total cuando cambian cantidades, precios o descuentos
-            $(document).on('input', '.cantidad, .precio-venta, .descuento', function() {
-                calcularTotal();
-            });
-
-            function calcularTotal() {
-                let total = 0;
-                $('.producto-row').each(function() {
-                    const cantidad = parseFloat($(this).find('.cantidad').val()) || 0;
-                    const precio = parseFloat($(this).find('.precio-venta').val()) || 0;
-                    const descuento = parseFloat($(this).find('.descuento').val()) || 0;
-                    total += (cantidad * precio) - descuento;
-                });
-                $('#total').val(total.toFixed(2));
+                        $('#selection_card').slideDown();
+                    }
+                } catch (e) { Swal.fire("Error", "Error al consultar stock", "error"); }
             }
 
-            // Calcular total inicial
-            setTimeout(function() {
-                calcularTotal();
-            }, 500);
+            // --- TABLE LOGIC ---
+            $('#btn_add_item').on('click', function() {
+                if (!selectedItem) return;
+                const qty = parseFloat($('#sel_cantidad').val()) || 0;
+                const price = parseFloat($('#sel_precio').val()) || 0;
+
+                if (qty <= 0) { Swal.fire("Error", "Ingrese una cantidad válida", "warning"); return; }
+                if (qty > selectedItem.stock) { Swal.fire("Error", "Stock insuficiente", "error"); return; }
+
+                addItem(selectedItem, qty, price, 0);
+                $('#selection_card').hide();
+                selectedItem = null;
+            });
+
+            function addItem(p, qty, price, desc) {
+                rowCount++;
+                itemsAgregados.add(p.id);
+                const sub = ((qty * price) - desc).toFixed(2);
+                
+                const row = `
+                    <tr id="row_${rowCount}" data-id="${p.id}">
+                        <td class="row-index">${rowCount}</td>
+                        <td>
+                            <div class="fw-bold">${p.nombre}</div>
+                            <div class="small text-muted">${p.codigo}</div>
+                            <input type="hidden" name="arrayidproducto[]" value="${p.id}">
+                        </td>
+                        <td><input type="number" name="arraycantidad[]" class="form-control form-control-sm t-qty" value="${qty.toFixed(3)}" step="0.001"></td>
+                        <td><input type="number" name="arrayprecioventa[]" class="form-control form-control-sm t-price" value="${price.toFixed(2)}" step="0.01"></td>
+                        <td><input type="number" name="arraydescuento[]" class="form-control form-control-sm t-desc" value="${desc.toFixed(2)}" step="0.01"></td>
+                        <td class="text-end fw-bold">Bs. <span class="t-sub">${sub}</span></td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-link text-danger p-0 delete-row"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    </tr>
+                `;
+                $('#tabla_detalle tbody').append(row);
+                updateTotals();
+            }
+
+            $(document).on('input', '.t-qty, .t-price, .t-desc', function() {
+                const tr = $(this).closest('tr');
+                const q = parseFloat(tr.find('.t-qty').val()) || 0;
+                const p = parseFloat(tr.find('.t-price').val()) || 0;
+                const d = parseFloat(tr.find('.t-desc').val()) || 0;
+                const sub = ((q * p) - d).toFixed(2);
+                tr.find('.t-sub').text(sub);
+                updateTotals();
+            });
+
+            $(document).on('click', '.delete-row', function() {
+                const tr = $(this).closest('tr');
+                itemsAgregados.delete(parseInt(tr.data('id')));
+                tr.remove();
+                renumber();
+                updateTotals();
+            });
+
+            function renumber() { $('#tabla_detalle tbody tr').each((i, el) => $(el).find('.row-index').text(i + 1)); }
+            function updateTotals() {
+                let total = 0;
+                $('.t-sub').each(function() { total += parseFloat($(this).text()) || 0; });
+                $('#label_total').text(total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#input_total').val(total.toFixed(2));
+            }
         });
     </script>
 @endpush

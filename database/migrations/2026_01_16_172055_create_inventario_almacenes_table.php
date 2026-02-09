@@ -13,7 +13,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('producto_id')->constrained('productos')->cascadeOnDelete();
             $table->foreignId('almacen_id')->constrained('almacenes')->cascadeOnDelete();
-            $table->integer('stock')->default(0);
+            $table->decimal('stock', 10, 4)->default(0);
             $table->unique(['producto_id', 'almacen_id']);
             $table->timestamps();
         });

@@ -80,7 +80,47 @@
                 <div class="label-title">Tipo Comprobante</div>
                 <div class="value-text">{{ $venta->comprobante->tipo_comprobante ?? 'N/A' }}</div>
             </div>
-            
+        </div>
+
+        <div class="section-title mt-4">
+            <i class="fas fa-tasks"></i> Estados y Acciones
+        </div>
+
+        <div class="row g-3 mb-2">
+            <div class="col-md-6">
+                <div class="label-title mb-2">Estado de Pago</div>
+                <div class="dropdown">
+                    @php
+                        $btnClass = (in_array($venta->estado_pago, ['pendiente', '0', 0])) ? 'btn-outline-danger' : 
+                                   (in_array($venta->estado_pago, ['cancelado', 'anulado']) ? 'btn-outline-secondary' : 'btn-outline-success');
+                        $statusTxt = (in_array($venta->estado_pago, ['pendiente', '0', 0])) ? 'Pendiente' : 
+                                    (in_array($venta->estado_pago, ['cancelado', 'anulado']) ? ucfirst($venta->estado_pago) : 'Pagado');
+                    @endphp
+                    <button class="btn {{ $btnClass }} btn-sm dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ $statusTxt }}
+                    </button>
+                    <ul class="dropdown-menu w-100 shadow-sm border-0">
+                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pagado">Marcar como Pagado</a></li>
+                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pendiente">Marcar como Pendiente</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="label-title mb-2">Estado de Entrega</div>
+                <div class="dropdown">
+                    @php
+                        $entregaTxt = $venta->estado_entrega == 'entregado' ? 'Entregado' : 'Por Entregar';
+                    @endphp
+                    <button class="btn {{ $venta->estado_entrega == 'entregado' ? 'btn-outline-success' : 'btn-outline-warning' }} btn-sm dropdown-toggle w-100 text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        {{ $entregaTxt }}
+                    </button>
+                    <ul class="dropdown-menu w-100 shadow-sm border-0">
+                        <li><a class="dropdown-item change-status-entrega" href="#" data-venta-id="{{ $venta->id }}" data-status="entregado">Entregado</a></li>
+                        <li><a class="dropdown-item change-status-entrega" href="#" data-venta-id="{{ $venta->id }}" data-status="por_entregar">Por Entregar</a></li>
+                    </ul>
+                </div>
+            </div>
+
             <div class="col-md-6">
                 <div class="label-title">Nota Interna</div>
                 <div class="value-text fst-italic text-muted">

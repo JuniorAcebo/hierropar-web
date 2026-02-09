@@ -1,539 +1,334 @@
 @extends('layouts.app')
+
+@section('title', 'Editar compra')
+
 @push('css')
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/css/bootstrap-select.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        /* Estilos generales */
-        .container {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        .border-section {
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #fff;
         }
-
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 1.5rem;
-            font-size: 2rem;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 0.5rem;
-        }
-
-        h4 {
-            color: #2c3e50;
-            margin: 0;
-        }
-
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-            margin: 0 -0.75rem 1rem;
-        }
-
-        .col-md-6 {
-            flex: 0 0 50%;
-            max-width: 50%;
-            padding: 0 0.75rem;
-            box-sizing: border-box;
-        }
-
-        .col-md-4,
-        .col-md-2 {
-            padding: 0 0.75rem;
-            box-sizing: border-box;
-        }
-
-        .col-md-4 {
-            flex: 0 0 33.333%;
-            max-width: 33.333%;
-        }
-
-        .col-md-2 {
-            flex: 0 0 16.666%;
-            max-width: 16.666%;
-        }
-
-        /* Estilos de los campos del formulario */
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #34495e;
+        .section-title {
+            font-size: 16px;
             font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e9ecef;
         }
-
-        input[type="text"],
-        input[type="number"],
-        input[type="datetime-local"],
-        select,
-        .form-control {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
+        .section-title i { margin-right: 8px; color: #3498db; }
+        .form-label { font-weight: 500; font-size: 13px; margin-bottom: 4px; color: #495057; }
+        .form-control-sm { font-size: 13px; padding: 4px 8px; height: 32px; }
+        
+        /* Search Component */
+        .search-wrapper { position: relative; }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 4; }
+        #producto_search { padding-left: 35px; border-radius: 4px; }
+        
+        .products-dropdown {
+            position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #dee2e6;
+            border-radius: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 350px; overflow-y: auto; display: none;
         }
-
-        input[type="text"]:focus,
-        input[type="number"]:focus,
-        input[type="datetime-local"]:focus,
-        select:focus,
-        .form-control:focus {
-            border-color: #3498db;
-            outline: none;
-            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        .product-item {
+            padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f1f1f1; display: flex; justify-content: space-between; align-items: center;
         }
+        .product-item:hover { background-color: #f8f9fa; }
+        .product-item.disabled { opacity: 0.5; cursor: not-allowed; }
+        .product-item .prod-main { font-weight: 500; color: #333; font-size: 13px; }
+        .product-item .prod-sub { font-size: 11px; color: #6c757d; }
+        .product-item .prod-price { font-weight: 600; color: #28a745; font-size: 11px; }
 
-        input[readonly] {
-            background-color: #f5f5f5;
+        /* Selection Card */
+        .product-selection-card {
+            background-color: #f8fbff; border: 1px solid #d1e3ff; border-radius: 6px; padding: 15px; margin-bottom: 15px; display: none;
         }
+        .selection-title { font-size: 14px; font-weight: 700; color: #0056b3; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        
+        .margen-badge { padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: 700; }
+        .margen-alto { background-color: #d4edda; color: #155724; }
+        .margen-medio { background-color: #fff3cd; color: #856404; }
+        .margen-bajo { background-color: #f8d7da; color: #721c24; }
 
-        /* Estilos de la sección de productos */
-        .card {
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            overflow: hidden;
-        }
-
-        .card-header {
-            background-color: #f8f9fa;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        .card-body {
-            padding: 1.5rem;
-        }
-
-        .producto-row {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        /* Estilos de botones */
-        button {
-            cursor: pointer;
-            padding: 0.75rem 1.25rem;
-            border-radius: 4px;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: all 0.3s;
-            border: none;
-        }
-
-        .btn-primary {
-            background-color: #3498db;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background-color: #2980b9;
-        }
-
-        .btn-secondary {
-            background-color: #95a5a6;
-            color: white;
-            margin-left: 0.5rem;
-        }
-
-        .btn-secondary:hover {
-            background-color: #7f8c8d;
-        }
-
-        .btn-danger {
-            background-color: #e74c3c;
-            color: white;
-            padding: 0.5rem 1rem;
-        }
-
-        .btn-danger:hover {
-            background-color: #c0392b;
-        }
-
-        /* Estilos para el total */
-        #total {
-            font-size: 1.25rem;
-            font-weight: bold;
-            padding: 1rem;
-            background-color: #f8f9fa;
-        }
-
-        /* Estilos para los botones de acción */
-        .mt-4 {
-            margin-top: 1.5rem;
-        }
-
-        .mt-3 {
-            margin-top: 1rem;
-        }
-
-        .mb-3 {
-            margin-bottom: 1rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-
-            .col-md-6,
-            .col-md-4,
-            .col-md-2 {
-                flex: 0 0 100%;
-                max-width: 100%;
-                margin-bottom: 1rem;
-            }
-
-            .producto-row {
-                flex-wrap: wrap;
-            }
-
-            .producto-row>div {
-                flex: 0 0 100%;
-                max-width: 100%;
-                margin-bottom: 0.5rem;
-            }
-
-            .producto-row .btn-danger {
-                width: 100%;
-            }
-        }
-
-        /* Estilos adicionales para compras */
-        .input-group-text {
-            min-width: 40px;
-            justify-content: center;
-        }
+        .h-32 { height: 32px !important; }
     </style>
 @endpush
 
 @section('content')
-    <div class="container">
-        <h1>Editar Compra</h1>
-
-        @if ($errors->any())
-            <div class="alert alert-danger">
-                <ul class="mb-0">
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        @if (session('error'))
-            <div class="alert alert-danger">
-                {{ session('error') }}
-            </div>
-        @endif
-
-        <form action="{{ route('compras.update', $compra->id) }}" method="POST">
-            @csrf
-            @method('PUT')
-
-            <div class="row">
-                <input type="hidden" name="user_id" value="{{ auth()->id() }}">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="numero_comprobante">N° Comprobante</label>
-                        <input type="text" class="form-control" id="numero_comprobante" name="numero_comprobante"
-                            value="{{ $compra->numero_comprobante }}" readonly>
-                    </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="fecha_hora">Fecha</label>
-                        <input type="datetime-local" class="form-control" id="fecha_hora" name="fecha_hora"
-                            value="{{ \Carbon\Carbon::parse($compra->fecha_hora)->format('Y-m-d\TH:i') }}">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="proveedor_id">Proveedor</label>
-                        <select class="form-control select2-search" id="proveedor_id" name="proveedor_id" required>
-                            <option value="">Seleccione proveedor</option>
-                            @foreach ($proveedores as $proveedor)
-                                @if ($proveedor->persona)
-                                    <option value="{{ $proveedor->id }}" @selected($compra->proveedor_id == $proveedor->id)>
-                                        {{ $proveedor->persona->razon_social ?? 'Proveedor sin nombre' }}
-                                        ({{ $proveedor->persona->numero_documento ?? '' }})
-                                    </option>
-                                @endif
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="almacen_id">Sucursal / Almacén</label>
-                        <select class="form-control" id="almacen_id" name="almacen_id" required>
-                            @foreach ($almacenes as $almacen)
-                                <option value="{{ $almacen->id }}" @selected($compra->almacen_id == $almacen->id)>
-                                    {{ $almacen->nombre }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="costo_transporte">Costo Transporte</label>
-                        <input type="number" step="0.01" class="form-control" id="costo_transporte" name="costo_transporte"
-                            value="{{ $compra->costo_transporte }}">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-8">
-                    <div class="form-group">
-                        <label for="nota_personal">Notas</label>
-                        <textarea class="form-control" id="nota_personal" name="nota_personal" rows="2">{{ $compra->nota_personal }}</textarea>
-                    </div>
-                </div>
-
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label for="comprobante_id">Comprobante</label>
-                        <select class="form-control" id="comprobante_id" name="comprobante_id" required>
-                            @foreach ($comprobantes as $comprobante)
-                                <option value="{{ $comprobante->id }}"
-                                    {{ $compra->comprobante_id == $comprobante->id ? 'selected' : '' }}>
-                                    {{ $comprobante->tipo_comprobante }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sección de productos -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h4>Productos</h4>
-                </div>
-                <div class="card-body">
-                    <div id="productos-container">
-                        @foreach ($compra->detalles as $detalle)
-                            @php
-                                $producto = $detalle->producto;
-                                $productoInfo = $productosInfo[$producto->id] ?? null;
-                                $vendido = $productoInfo['vendido'] ?? 0;
-                                $minimoPermitido = $productoInfo['minimo_permitido'] ?? 0;
-                                // Formatear valores para mostrar
-                                $cantidadFormateada = number_format($detalle->cantidad, 2, '.', '');
-                                $precioCompraFormateado = number_format($detalle->precio_compra, 2, '.', '');
-                                $precioVentaFormateado = number_format($detalle->precio_venta, 2, '.', '');
-                            @endphp
-
-                            <div class="row producto-row mb-3">
-                                <div class="col-md-4">
-                                    <select class="form-control select2-producto" name="arrayidproducto[]" required>
-                                        <option value="">Seleccione producto</option>
-                                        @foreach ($productos as $prod)
-                                            @php
-                                                $prodStockFormateado = number_format($prod->stock, 2, '.', '');
-                                            @endphp
-                                            <option value="{{ $prod->id }}"
-                                                {{ $producto->id == $prod->id ? 'selected' : '' }}
-                                                data-precio-venta="{{ number_format($prod->precio_venta, 2, '.', '') }}"
-                                                data-precio-compra="{{ number_format($prod->precio_compra, 2, '.', '') }}"
-                                                data-stock="{{ $prodStockFormateado }}">
-                                                {{ $prod->nombre }} (Stock: {{ $prodStockFormateado }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <small class="text-muted">Seleccione el producto</small>
-                                </div>
-                                <div class="col-md-2">
-                                    <input type="number" class="form-control cantidad" name="arraycantidad[]"
-                                        value="{{ $cantidadFormateada }}" step="0.001" min="0.001" required>
-                                    <small class="text-muted">Cantidad</small>
-
-                                    <!-- Mostrar información de ventas si existe -->
-                                    @if ($productoInfo)
-                                        <small class="text-danger d-block">
-                                            Vendido: {{ number_format($vendido, 2, '.', '') }}
-                                        </small>
-                                        <small class="text-warning d-block">
-                                            Mínimo: {{ number_format($minimoPermitido, 2, '.', '') }}
-                                        </small>
-                                    @endif
-                                    
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="input-group">
-                                        <span class="input-group-text">$</span>
-                                        <input type="number" step="0.01" class="form-control precio-compra"
-                                            name="arraypreciocompra[]" value="{{ $precioCompraFormateado }}" min="0.01"
-                                            required>
-                                    </div>
-                                    <small class="text-muted">Precio compra</small>
-                                </div>
-                                <div class="col-md-2">
-                                    <div class="input-group">
-                                        <span class="input-group-text">$</span>
-                                        <input type="number" step="0.01" class="form-control precio-venta"
-                                            name="arrayprecioventa[]" value="{{ $precioVentaFormateado }}" min="0.01"
-                                            required>
-                                    </div>
-                                    <small class="text-muted">Precio venta</small>
-                                </div>
-                                <div class="col-md-2">
-                                    <button type="button" class="btn btn-danger remove-producto">Eliminar</button>
-                                    <div class="mt-1"></div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                    <button type="button" id="add-producto" class="btn btn-primary mt-3">Agregar Producto</button>
-                </div>
-            </div>
-
-            <div class="form-group mt-4">
-                <label for="total">Total</label>
-                <div class="input-group">
-                    <span class="input-group-text">$</span>
-                    <input type="number" step="0.01" class="form-control" id="total" name="total"
-                        value="{{ number_format($compra->total, 2, '.', '') }}" readonly>
-                </div>
-            </div>
-
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
-                <a href="{{ route('compras.index') }}" class="btn btn-secondary">Cancelar</a>
-            </div>
-        </form>
+    @include('layouts.partials.alert')
+    <div class="container-fluid px-4">
+        <h1 class="mt-4 fs-4 fw-bold">Editar Compra #{{ str_pad($compra->id, 8, '0', STR_PAD_LEFT) }}</h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-4">
+                <li class="breadcrumb-item"><a href="{{ route('panel') }}">Inicio</a></li>
+                <li class="breadcrumb-item"><a href="{{ route('compras.index') }}">Compras</a></li>
+                <li class="breadcrumb-item active">Editar</li>
+            </ol>
+        </nav>
     </div>
+
+    <form action="{{ route('compras.update', $compra->id) }}" method="post" id="compraForm">
+        @csrf
+        @method('PUT')
+        <div class="container-lg">
+            <div class="border-section">
+                <div class="section-title"><i class="fas fa-edit"></i> Datos de Compra</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Proveedor:</label>
+                        <select name="proveedor_id" id="proveedor_id" class="form-control form-control-sm selectpicker" data-live-search="true" required>
+                            @foreach ($proveedores as $item)
+                                <option value="{{ $item->id }}" {{ $compra->proveedor_id == $item->id ? 'selected' : '' }}>{{ $item->persona->razon_social }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Sucursal:</label>
+                        <select name="almacen_id" id="almacen_id" class="form-control form-control-sm selectpicker" required>
+                            @foreach ($almacenes as $item)
+                                <option value="{{ $item->id }}" {{ $compra->almacen_id == $item->id ? 'selected' : '' }}>{{ $item->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Comprobante:</label>
+                        <select name="comprobante_id" id="comprobante_id" class="form-control form-control-sm selectpicker">
+                            @foreach ($comprobantes as $item)
+                                <option value="{{ $item->id }}" {{ $compra->comprobante_id == $item->id ? 'selected' : '' }}>{{ $item->tipo_comprobante }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Número:</label>
+                        <input type="text" name="numero_comprobante" class="form-control form-control-sm" value="{{ $compra->numero_comprobante }}" readonly>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Transporte (Bs):</label>
+                        <input type="number" step="0.01" name="costo_transporte" class="form-control form-control-sm" value="{{ $compra->costo_transporte }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Estado Entrega:</label>
+                        <select name="estado_entrega" class="form-select form-select-sm">
+                            <option value="entregado" {{ $compra->estado_entrega == 'entregado' ? 'selected' : '' }}>Entregado</option>
+                            <option value="por_entregar" {{ $compra->estado_entrega == 'por_entregar' ? 'selected' : '' }}>Por recibir</option>
+                        </select>
+                    </div>
+                    <input type="hidden" name="user_id" value="{{ auth()->id() }}">
+                </div>
+            </div>
+
+            <div class="border-section">
+                <div class="section-title"><i class="fas fa-boxes"></i> Detalles de la Compra</div>
+                
+                <div class="search-wrapper mb-3">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="producto_search" class="form-control form-control-sm" placeholder="Buscar producto para añadir...">
+                    <div class="products-dropdown" id="products_dropdown"></div>
+                </div>
+
+                <div class="product-selection-card" id="selection_card">
+                    <div class="selection-title">
+                        <span><i class="fas fa-box"></i> <span id="sel_name">Producto</span></span>
+                        <span id="sel_margen_badge" class="margen-badge margen-bajo">Margen: 0%</span>
+                    </div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label">Cantidad</label>
+                            <input type="number" id="sel_cantidad" class="form-control form-control-sm" value="1.00" step="0.01">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Costo Compra (Bs.)</label>
+                            <input type="number" id="sel_costo" class="form-control form-control-sm" step="0.01">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Precio Venta (Bs.)</label>
+                            <input type="number" id="sel_venta" class="form-control form-control-sm" step="0.01">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Código</label>
+                            <input type="text" id="sel_codigo" class="form-control form-control-sm bg-white" readonly>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" id="btn_add_item" class="btn btn-primary btn-sm w-100 h-32"><i class="fas fa-plus me-1"></i> Añadir</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table id="tabla_detalle" class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="5%">#</th>
+                                <th>Producto</th>
+                                <th width="12%">Cantidad</th>
+                                <th width="12%">Costo Compra</th>
+                                <th width="12%">P. Venta</th>
+                                <th width="10%">Margen</th>
+                                <th width="15%">Subtotal</th>
+                                <th width="5%"></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="row justify-content-end">
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-between align-items-center p-2 bg-light border rounded">
+                            <span class="fw-bold">TOTAL COMPRA:</span>
+                            <span class="fs-5 fw-bold text-success">Bs. <span id="label_total">0.00</span></span>
+                            <input type="hidden" name="total" id="input_total" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{{ route('compras.index') }}" class="btn btn-outline-secondary btn-sm px-4">Volver</a>
+                    <button id="btn_guardar" type="submit" class="btn btn-primary btn-sm px-5 fw-bold">Actualizar Compra</button>
+                </div>
+            </div>
+        </div>
+    </form>
 @endsection
 
 @push('js')
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-select@1.14.0-beta3/dist/js/bootstrap-select.min.js"></script>
     <script>
         $(document).ready(function() {
-            // Inicializar Select2 para proveedores
-            $('.select2-search').select2({
-                placeholder: "Buscar proveedor...",
-                language: "es",
-                width: '100%'
+            const PRODUCTOR_RAW = '{!! addslashes(json_encode($productos)) !!}';
+            const PRODUCTOS = JSON.parse(PRODUCTOR_RAW);
+            const EXISTENTES = @json($compra->detalles->load('producto'));
+            let itemsAgregados = new Set();
+            let selectedItem = null;
+            let rowCount = 0;
+
+            $('.selectpicker').selectpicker();
+
+            // --- LOAD DATA ---
+            EXISTENTES.forEach(det => {
+                addItem(det.producto, parseFloat(det.cantidad), parseFloat(det.precio_compra), parseFloat(det.precio_venta));
             });
 
-            // Función para inicializar Select2 en productos
-            function initSelect2ForProducts() {
-                $('.select2-producto').select2({
-                    placeholder: "Buscar producto...",
-                    language: "es",
-                    width: '100%'
-                }).on('change', function() {
-                    const selectedOption = $(this).find('option:selected');
-                    const precioVenta = parseFloat(selectedOption.data('precio-venta')) || 0;
-                    const precioCompra = parseFloat(selectedOption.data('precio-compra')) || 0;
+            // --- SEARCH LOGIC ---
+            $('#producto_search').on('input', function() {
+                const q = $(this).val().toLowerCase().trim();
+                const dropdown = $('#products_dropdown');
+                if (q.length < 1) { dropdown.hide(); return; }
+                const matches = PRODUCTOS.filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)).slice(0, 10);
+                dropdown.empty();
+                if (matches.length === 0) { dropdown.append('<div class="p-3 text-muted small text-center">No encontrado</div>').show(); return; }
 
-                    // Actualizar ambos precios solamente
-                    $(this).closest('.producto-row').find('.precio-compra').val(precioCompra.toFixed(2));
-                    $(this).closest('.producto-row').find('.precio-venta').val(precioVenta.toFixed(2));
-                    calcularTotal();
+                matches.forEach(p => {
+                    const isAdded = itemsAgregados.has(p.id);
+                    const item = $(`
+                        <div class="product-item ${isAdded ? 'disabled' : ''}">
+                            <div>
+                                <div class="prod-main">${p.nombre}</div>
+                                <div class="prod-sub">${p.codigo}</div>
+                            </div>
+                            <div class="prod-price">Costo sugerido: Bs.${parseFloat(p.precio_compra).toFixed(2)}</div>
+                        </div>
+                    `);
+                    if (!isAdded) item.on('click', () => {
+                        selectedItem = p;
+                        $('#sel_name').text(p.nombre);
+                        $('#sel_codigo').val(p.codigo);
+                        $('#sel_costo').val(parseFloat(p.precio_compra).toFixed(2));
+                        $('#sel_venta').val(parseFloat(p.precio_venta).toFixed(2));
+                        $('#sel_cantidad').val('1.00').focus();
+                        updateMargenBadge();
+                        $('#selection_card').slideDown(); dropdown.hide(); $('#producto_search').val('');
+                    });
+                    dropdown.append(item);
                 });
-            }
-
-            // Inicializar para productos existentes
-            initSelect2ForProducts();
-
-            // Agregar nuevo producto
-            $('#add-producto').click(function() {
-                const newRow = `
-                    <div class="row producto-row mb-3">
-                        <div class="col-md-4">
-                            <select class="form-control select2-producto" name="arrayidproducto[]" required>
-                                <option value="">Seleccione producto</option>
-                                @foreach ($productos as $prod)
-                                    @php
-                                        $prodStockFormateado = number_format($prod->stock, 2, '.', '');
-                                    @endphp
-                                    <option value="{{ $prod->id }}"
-                                        data-precio-venta="{{ number_format($prod->precio_venta, 2, '.', '') }}"
-                                        data-precio-compra="{{ number_format($prod->precio_compra, 2, '.', '') }}"
-                                        data-stock="{{ $prodStockFormateado }}">
-                                        {{ $prod->nombre }} (Stock: {{ $prodStockFormateado }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            <small class="text-muted">Seleccione el producto</small>
-                        </div>
-                        <div class="col-md-2">
-                            <input type="number" class="form-control cantidad" name="arraycantidad[]"
-                                step="0.01" min="0.01" value="1.00" required>
-                            <small class="text-muted">Cantidad</small>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" class="form-control precio-compra"
-                                    name="arraypreciocompra[]" min="0.01" value="0.00" required>
-                            </div>
-                            <small class="text-muted">Precio compra</small>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" step="0.01" class="form-control precio-venta"
-                                    name="arrayprecioventa[]" min="0.01" value="0.00" required>
-                            </div>
-                            <small class="text-muted">Precio venta</small>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="button" class="btn btn-danger remove-producto">Eliminar</button>
-                            <div class="mt-1"></div>
-                        </div>
-                    </div>`;
-
-                $('#productos-container').append(newRow);
-                initSelect2ForProducts();
-                calcularTotal();
+                dropdown.show();
             });
 
-            // Eliminar producto
-            $(document).on('click', '.remove-producto', function() {
-                // No permitir eliminar si solo queda un producto
-                if ($('.producto-row').length <= 1) {
-                    alert('Debe haber al menos un producto en la compra');
-                    return;
+            function updateMargenBadge() {
+                const costo = parseFloat($('#sel_costo').val()) || 0;
+                const venta = parseFloat($('#sel_venta').val()) || 0;
+                if (costo > 0) {
+                    const margen = ((venta - costo) / costo * 100).toFixed(2);
+                    const badge = $('#sel_margen_badge').text(`Margen: ${margen}%`);
+                    badge.removeClass('margen-alto margen-medio margen-bajo');
+                    if (margen >= 30) badge.addClass('margen-alto');
+                    else if (margen >= 10) badge.addClass('margen-medio');
+                    else badge.addClass('margen-bajo');
                 }
-                $(this).closest('.producto-row').remove();
-                calcularTotal();
+            }
+            $('#sel_costo, #sel_venta').on('input', updateMargenBadge);
+
+            // --- TABLE LOGIC ---
+            $('#btn_add_item').on('click', function() {
+                if (!selectedItem) return;
+                const qty = parseFloat($('#sel_cantidad').val()) || 0;
+                const costo = parseFloat($('#sel_costo').val()) || 0;
+                const venta = parseFloat($('#sel_venta').val()) || 0;
+                if (qty <= 0 || costo <= 0) { Swal.fire("Error", "Complete los campos correctamente", "warning"); return; }
+                addItem(selectedItem, qty, costo, venta);
+                $('#selection_card').hide(); selectedItem = null;
             });
 
-            // Calcular total cuando cambian cantidades o precios
-            $(document).on('input', '.cantidad, .precio-compra', function() {
-                calcularTotal();
-            });
-
-            function calcularTotal() {
-                let total = 0;
-                $('.producto-row').each(function() {
-                    const cantidad = parseFloat($(this).find('.cantidad').val()) || 0;
-                    const precio = parseFloat($(this).find('.precio-compra').val()) || 0;
-                    if (!isNaN(cantidad) && !isNaN(precio)) {
-                        total += cantidad * precio;
-                    }
-                });
-                $('#total').val(total.toFixed(2));
+            function addItem(p, qty, costo, venta) {
+                rowCount++;
+                itemsAgregados.add(p.id);
+                const sub = (qty * costo).toFixed(2);
+                const margen = costo > 0 ? ((venta - costo) / costo * 100).toFixed(2) : 0;
+                let mClass = 'margen-bajo';
+                if (margen >= 30) mClass = 'margen-alto';
+                else if (margen >= 10) mClass = 'margen-medio';
+                
+                const row = `
+                    <tr id="row_${rowCount}" data-id="${p.id}">
+                        <td class="row-index">${rowCount}</td>
+                        <td>
+                            <div class="fw-bold">${p.nombre}</div>
+                            <div class="small text-muted">${p.codigo}</div>
+                            <input type="hidden" name="arrayidproducto[]" value="${p.id}">
+                        </td>
+                        <td><input type="number" name="arraycantidad[]" class="form-control form-control-sm t-qty" value="${qty.toFixed(2)}" step="0.01"></td>
+                        <td><input type="number" name="arraypreciocompra[]" class="form-control form-control-sm t-cost" value="${costo.toFixed(2)}" step="0.01"></td>
+                        <td><input type="number" name="arrayprecioventa[]" class="form-control form-control-sm t-sell" value="${venta.toFixed(2)}" step="0.01"></td>
+                        <td class="text-center"><span class="margen-badge ${mClass} t-margen">${margen}%</span></td>
+                        <td class="text-end fw-bold">Bs. <span class="t-sub">${sub}</span></td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-link text-danger p-0 delete-row"><i class="fas fa-trash-alt"></i></button>
+                        </td>
+                    </tr>
+                `;
+                $('#tabla_detalle tbody').append(row);
+                updateTotals();
             }
 
-            // Calcular total inicial
-            calcularTotal();
+            $(document).on('input', '.t-qty, .t-cost, .t-sell', function() {
+                const tr = $(this).closest('tr');
+                const q = parseFloat(tr.find('.t-qty').val()) || 0, c = parseFloat(tr.find('.t-cost').val()) || 0, v = parseFloat(tr.find('.t-sell').val()) || 0;
+                tr.find('.t-sub').text((q * c).toFixed(2));
+                const m = c > 0 ? ((v - c) / c * 100).toFixed(2) : 0;
+                const badge = tr.find('.t-margen').text(m + '%');
+                badge.removeClass('margen-alto margen-medio margen-bajo');
+                if (m >= 30) badge.addClass('margen-alto'); else if (m >= 10) badge.addClass('margen-medio'); else badge.addClass('margen-bajo');
+                updateTotals();
+            });
+
+            $(document).on('click', '.delete-row', function() {
+                const tr = $(this).closest('tr');
+                itemsAgregados.delete(parseInt(tr.data('id')));
+                tr.remove(); renumber(); updateTotals();
+            });
+
+            function renumber() { $('#tabla_detalle tbody tr').each((i, el) => $(el).find('.row-index').text(i + 1)); }
+            function updateTotals() {
+                let total = 0;
+                $('.t-sub').each(function() { total += parseFloat($(this).text()) || 0; });
+                $('#label_total').text(total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+                $('#input_total').val(total.toFixed(2));
+            }
         });
     </script>
 @endpush

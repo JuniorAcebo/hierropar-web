@@ -22,10 +22,53 @@ class ClienteController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $clientes = Cliente::with('persona.documento')->get();
-        return view('cliente.index', compact('clientes'));
+        $busqueda = $request->get('busqueda');
+        $perPage  = $request->get('per_page', 10);
+
+        if (!in_array($perPage, [5, 10, 15, 20, 25])) $perPage = 10;
+
+        $query = Cliente::with('persona.documento');
+
+        if ($busqueda) {
+            $query->whereHas('persona', function ($q) use ($busqueda) {
+                $q->where('razon_social', 'like', "%{$busqueda}%")
+                    ->orWhere('direccion', 'like', "%{$busqueda}%")
+                    ->orWhere('telefono', 'like', "%{$busqueda}%")
+                    ->orWhere('email', 'like', "%{$busqueda}%")
+                    ->orWhere('numero_documento', 'like', "%{$busqueda}%")
+                    ->orWhere('tipo_persona', 'like', "%{$busqueda}%");
+            })->orWhereHas('persona.documento', function ($q) use ($busqueda) {
+                $q->where('tipo_documento', 'like', "%{$busqueda}%");
+            });
+        }
+
+        $clientes = $query->paginate($perPage);
+
+        $totalClientes = Cliente::count();
+        $clientesActivos = Cliente::whereHas('persona', fn($q) => $q->where('estado', 1))->count();
+        $clientesInactivos = $totalClientes - $clientesActivos;
+
+        if ($request->ajax()) {
+            return view('cliente.index', compact(
+                'clientes',
+                'busqueda',
+                'perPage',
+                'totalClientes',
+                'clientesActivos',
+                'clientesInactivos'
+            ));
+        }
+
+        return view('cliente.index', compact(
+            'clientes',
+            'busqueda',
+            'perPage',
+            'totalClientes',
+            'clientesActivos',
+            'clientesInactivos'
+        ));
     }
 
     /**

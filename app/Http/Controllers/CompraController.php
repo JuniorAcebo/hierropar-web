@@ -12,16 +12,17 @@ use App\Models\Proveedor;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Traits\FilterByAlmacen;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CompraController extends Controller
 {
+    use FilterByAlmacen;
 
     public function generarPdf($id, Request $request)
     {
-        //Call to undefined relationship [proveedore] on model [App\Models\Compra].
-        
+
         $compra = Compra::with([
             'comprobante',
             'proveedor.persona',
@@ -54,14 +55,94 @@ class CompraController extends Controller
         $this->middleware('permission:eliminar-compra', ['only' => ['destroy']]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $compras = Compra::with(['comprobante', 'proveedor.persona', 'user'])
-            ->where('estado', 1)
-            ->latest()
-            ->get();
+        $busqueda = $request->get('busqueda');
+        $perPage  = $request->get('per_page', 10);
+        $sort     = $request->get('sort', 'fecha_hora'); // Por defecto fecha más reciente
+        $direction = $request->get('direction', 'desc'); // Descendente por defecto
 
-        return view('compra.index', compact('compras'));
+        // Validar per_page y direction
+        if (!in_array($perPage, [5, 10, 15, 20, 25])) $perPage = 10;
+        if (!in_array($direction, ['asc', 'desc'])) $direction = 'desc';
+
+        $query = Compra::with(['comprobante', 'proveedor.persona', 'user'])
+            ->where('estado', 1);
+
+        // Filtrar por almacén del usuario
+        $query = $this->filterByUserAlmacen($query);
+
+        // Búsqueda
+        if ($busqueda) {
+            $query->where(function ($q) use ($busqueda) {
+                $q->where('numero_comprobante', 'like', "%{$busqueda}%")
+                    ->orWhereHas('proveedor.persona', function ($pq) use ($busqueda) {
+                        $pq->where('razon_social', 'like', "%{$busqueda}%")
+                            ->orWhere('tipo_persona', 'like', "%{$busqueda}%");
+                    })
+                    ->orWhereHas('comprobante', function ($cq) use ($busqueda) {
+                        $cq->where('tipo_comprobante', 'like', "%{$busqueda}%");
+                    });
+            });
+        }
+
+        // Ordenamiento
+        switch ($sort) {
+            case 'proveedor':
+                $query->join('proveedores', 'compras.proveedor_id', '=', 'proveedores.id')
+                    ->join('personas', 'proveedores.persona_id', '=', 'personas.id')
+                    ->select('compras.*') // Evitar colisión de IDs
+                    ->orderBy('personas.razon_social', $direction);
+                break;
+            case 'numero_comprobante':
+                $query->orderBy('numero_comprobante', $direction);
+                break;
+            case 'total':
+                $query->orderBy('total', $direction);
+                break;
+            case 'fecha_hora':
+                $query->orderBy('fecha_hora', $direction);
+                break;
+            default:
+                $query->latest('fecha_hora');
+                break;
+        }
+
+        $compras = $query->paginate($perPage);
+
+        // Estadísticas para el footer - Filtradas por almacén
+        $statsQuery = Compra::where('estado', 1);
+        $statsQuery = $this->filterByUserAlmacen($statsQuery);
+
+        $totalComprasMonto = (clone $statsQuery)->sum('total');
+        $totalComprasCount = (clone $statsQuery)->count();
+        $comprasHoy = (clone $statsQuery)
+            ->whereDate('fecha_hora', today())
+            ->count();
+
+        if ($request->ajax()) {
+            return view('compra.index', compact(
+                'compras',
+                'busqueda',
+                'perPage',
+                'sort',
+                'direction',
+                'totalComprasMonto',
+                'totalComprasCount',
+                'comprasHoy'
+            ));
+        }
+
+        return view('compra.index', compact(
+            'compras',
+            'busqueda',
+            'perPage',
+            'sort',
+            'direction',
+            'totalComprasMonto',
+            'totalComprasCount',
+            'comprasHoy'
+        ));
     }
 
 
@@ -69,25 +150,44 @@ class CompraController extends Controller
     {
         $proveedores = Proveedor::with('persona')->get();
         $comprobantes = Comprobante::all();
-        $almacenes = \App\Models\Almacen::where('estado', 1)->get();
-        $productos = Producto::where('estado', 1)->get();
         
+        // Filtrar almacenes disponibles para el usuario
+        $userAlmacenId = auth()->user()->almacen_id;
+        if ($userAlmacenId) {
+            $almacenes = \App\Models\Almacen::where('estado', 1)->where('id', $userAlmacenId)->get();
+        } else {
+            $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        }
+        $productos = Producto::where('estado', 1)->get();
+
         // Generar número de comprobante automático
         $ultimaCompra = Compra::latest('id')->first();
         $nextNumber = $ultimaCompra ? (intval($ultimaCompra->numero_comprobante) + 1) : 1;
         $nextComprobanteNumber = str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
-        
+
         return view('compra.create', compact('proveedores', 'comprobantes', 'almacenes', 'productos', 'nextComprobanteNumber'));
     }
 
     public function store(StoreCompraRequest $request)
     {
         try {
+            // Validar acceso al almacén
+            if (!$this->canAccessAlmacen($request->almacen_id)) {
+                return redirect()->back()->withInput()->with('error', 'No tiene permiso para realizar compras en este almacén.');
+            }
+
             DB::beginTransaction();
+
+            $numeroComprobante = $request->numero_comprobante;
+            if (empty($numeroComprobante)) {
+                $ultimaCompra = Compra::latest('id')->first();
+                $nextNumber = $ultimaCompra ? (intval($ultimaCompra->numero_comprobante) + 1) : 1;
+                $numeroComprobante = str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
+            }
 
             $compra = Compra::create([
                 'fecha_hora' => now(),
-                'numero_comprobante' => $request->numero_comprobante,
+                'numero_comprobante' => $numeroComprobante,
                 'total' => 0, // Se calculará abajo
                 'costo_transporte' => $request->costo_transporte ?? 0,
                 'nota_personal' => $request->nota_personal,
@@ -134,6 +234,13 @@ class CompraController extends Controller
     // En CompraController.php
     public function show(Compra $compra)
     {
+        if (!$this->canAccessAlmacen($compra->almacen_id)) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Acceso denegado'], 403);
+            }
+            return redirect()->route('compras.index')->with('error', 'No tiene acceso a esta compra.');
+        }
+
         $compra->load(['comprobante', 'proveedor.persona', 'detalles.producto', 'almacen', 'user']);
 
         if (request()->ajax() || request()->wantsJson()) {
@@ -149,18 +256,22 @@ class CompraController extends Controller
     public function edit(Compra $compra)
     {
         $compra->load(['detalles.producto', 'proveedor.persona']);
-        
+
+        if (!$this->canAccessAlmacen($compra->almacen_id)) {
+            return redirect()->route('compras.index')->with('error', 'No tiene acceso a esta compra.');
+        }
+
         $productosInfo = [];
         foreach ($compra->detalles as $detalle) {
             $producto = $detalle->producto;
             // Calculamos cuánto se ha vendido de este producto en total
             //$vendido = \App\Models\DetalleVenta::where('producto_id', $producto->id)->sum('cantidad');
-            if($producto){
+            if ($producto) {
                 $vendido = DetalleVenta::where('producto_id', $producto->id)->sum('cantidad');
-            }else{
+            } else {
                 $vendido = 0;
             }
-            
+
             $productosInfo[$producto->id] = [
                 'vendido' => $vendido,
                 'minimo_permitido' => $vendido,
@@ -170,8 +281,15 @@ class CompraController extends Controller
 
         $proveedores = Proveedor::with('persona')->get();
         $comprobantes = Comprobante::all();
-        $almacenes = \App\Models\Almacen::where('estado', 1)->get();
         
+        // Filtrar almacenes disponibles para el usuario
+        $userAlmacenId = auth()->user()->almacen_id;
+        if ($userAlmacenId) {
+            $almacenes = \App\Models\Almacen::where('estado', 1)->where('id', $userAlmacenId)->get();
+        } else {
+            $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        }
+
         // Cargamos los productos con el stock total para mostrar en el select
         $productos = Producto::withSum('inventarios as stock', 'stock')
             ->where('estado', 1)
@@ -183,6 +301,11 @@ class CompraController extends Controller
     public function update(UpdateCompraRequest $request, Compra $compra)
     {
         try {
+            // Validar acceso al almacén original y al nuevo
+            if (!$this->canAccessAlmacen($compra->almacen_id) || !$this->canAccessAlmacen($request->almacen_id)) {
+                return redirect()->back()->withInput()->with('error', 'Acceso denegado al almacén.');
+            }
+
             DB::beginTransaction();
 
             // 1. Validar de forma inteligente: Si aumentas stock (de 5 a 6), no dar error aunque tengas 0.
@@ -206,7 +329,7 @@ class CompraController extends Controller
             // 4. Actualizar datos básicos
             $compra->update([
                 'fecha_hora' => $request->fecha_hora ?? $compra->fecha_hora,
-                'numero_comprobante' => $request->numero_comprobante,
+                'numero_comprobante' => $request->numero_comprobante ?? $compra->numero_comprobante,
                 'total' => 0,
                 'costo_transporte' => $request->costo_transporte ?? 0,
                 'nota_personal' => $request->nota_personal,
@@ -245,7 +368,7 @@ class CompraController extends Controller
 
             // 6. Procesar entrada de stock nuevo
             // IMPORTANTE: Recargar la relación detalles porque tiene en caché los viejos (que ya se borraron)
-            $compra->refresh(); 
+            $compra->refresh();
             $this->compraService->procesarEntradaStock($compra);
 
             DB::commit();
@@ -259,6 +382,10 @@ class CompraController extends Controller
     public function destroy(Compra $compra)
     {
         try {
+            if (!$this->canAccessAlmacen($compra->almacen_id)) {
+                return redirect()->route('compras.index')->with('error', 'No tiene permiso para eliminar compras en este almacén.');
+            }
+
             DB::beginTransaction();
 
             // Validar si se puede revertir
@@ -276,6 +403,75 @@ class CompraController extends Controller
         } catch (Exception $e) {
             DB::rollBack();
             return redirect()->route('compras.index')->with('error', 'No se pudo eliminar: ' . $e->getMessage());
+        }
+    }
+
+    public function actualizarEstadoPago(Request $request, string $id)
+    {
+        try {
+            $compra = Compra::findOrFail($id);
+
+            if (!$this->canAccessAlmacen($compra->almacen_id)) {
+                return response()->json(['success' => false, 'message' => 'Acceso denegado'], 403);
+            }
+
+            $estadoAnterior = $compra->estado_pago;
+            $estadoNuevo = $request->input('estado_pago', 'pagado');
+
+            DB::beginTransaction();
+
+            // Si se cancela/anula y no estaba cancelada antes -> Revertir stock (quitar lo que entró)
+            if (in_array($estadoNuevo, ['cancelado', 'anulado']) && !in_array($estadoAnterior, ['cancelado', 'anulado'])) {
+                // Validar si se puede revertir (si hay stock suficiente para quitar)
+                $this->compraService->validarReversion($compra);
+                $this->compraService->revertirStock($compra);
+            }
+            // Si se recupera de cancelado -> Procesar entrada stock nuevamente
+            elseif (!in_array($estadoNuevo, ['cancelado', 'anulado']) && in_array($estadoAnterior, ['cancelado', 'anulado'])) {
+                $this->compraService->procesarEntradaStock($compra);
+            }
+
+            $compra->update(['estado_pago' => $estadoNuevo]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado de pago actualizado correctamente',
+                'compra' => $compra
+            ]);
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el estado de pago: ' . $e->getMessage()
+            ], 400);
+        }
+    }
+
+    public function actualizarEstadoEntrega(Request $request, string $id)
+    {
+        try {
+            $compra = Compra::findOrFail($id);
+
+            if (!$this->canAccessAlmacen($compra->almacen_id)) {
+                return response()->json(['success' => false, 'message' => 'Acceso denegado'], 403);
+            }
+
+            $estado = $request->input('estado_entrega', 'entregado');
+
+            $compra->update(['estado_entrega' => $estado]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Estado de entrega actualizado correctamente',
+                'compra' => $compra
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al actualizar el estado de entrega: ' . $e->getMessage()
+            ], 400);
         }
     }
 }

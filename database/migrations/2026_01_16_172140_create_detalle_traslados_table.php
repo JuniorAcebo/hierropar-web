@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('producto_id')->constrained('productos')->cascadeOnDelete();
             $table->foreignId('traslado_id')->constrained('traslados')->cascadeOnDelete();
 
-            $table->integer('cantidad');
+            $table->decimal('cantidad', 10, 4);
 
             $table->primary(['producto_id', 'traslado_id']);
 

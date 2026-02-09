@@ -38,7 +38,7 @@ trait FilterByAlmacen
         }
         
         // Trabajador solo puede acceder a su almacén
-        return $user->almacen_id === $almacenId;
+        return $user->almacen_id == $almacenId;
     }
 
     /**

@@ -14,28 +14,33 @@
 @section('content')
 @include('layouts.partials.alert')
 
-<div class="container-fluid px-4">
-    <h1 class="mt-4 text-center">Tipos de Unidades</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="{{ route('panel') }}">Inicio</a></li>
-        <li class="breadcrumb-item active">Tipos de Unidades</li>
-    </ol>
-
-    @can('crear-tipounidad')
-    <div class="mb-4">
-        <a href="{{route('tipounidades.create')}}" class="btn btn-primary">
-            <i class="fas fa-plus me-1"></i> Añadir Nuevo Tipo de Unidad
-        </a>
-    </div>
-    @endcan
-
-    <div class="card mb-4">
-        <div class="card-header">
-            <i class="fas fa-table me-1"></i>
-            Tabla de tipos de unidades
+<div class="container-fluid px-4 py-4">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Tipos de Unidades</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ route('panel') }}" class="text-decoration-none text-muted">Inicio</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Tipos de Unidades</li>
+                </ol>
+            </nav>
         </div>
-        <div class="card-body">
-            <table id="datatablesSimple" class="light-table">
+        @can('crear-tipounidad')
+        <a href="{{route('tipounidades.create')}}" class="btn-create">
+            <i class="fas fa-plus"></i> Añadir Nuevo Tipo de Unidad
+        </a>
+        @endcan
+    </div>
+
+    <div class="card-clean">
+        <div class="card-header-clean">
+            <div class="card-header-title">
+                <i class="fas fa-list"></i> Tabla de tipos de unidades
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+            <table id="datatablesSimple" class="custom-table">
                 <thead>
                     <tr>
                         <th>Nombre</th>
@@ -58,12 +63,12 @@
                         </td>
 
                         <td>
-                            <div class="action-btns">
+                            <div class="btn-action-group">
                                 @can('editar-tipounidad')
-                                <a class="action-btn"
+                                <a class="btn-icon-soft"
                                 href="{{ route('tipounidades.edit', $item) }}"
                                 title="Editar">
-                                    <i class="fas fa-edit"></i>
+                                    <i class="fas fa-pen"></i>
                                 </a>
                                 @endcan
                             </div>
@@ -73,6 +78,7 @@
                     </tbody>
 
             </table>
+            </div>
         </div>
     </div>
 </div>
@@ -99,3 +105,4 @@
         });
     </script>
 @endpush
+

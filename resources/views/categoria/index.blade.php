@@ -14,34 +14,39 @@
 @section('content')
     @include('layouts.partials.alert')
 
-    <div class="container-fluid px-4">
-        <h1 class="mt-4 text-center" style="color: #2c3e50; font-weight: 700;">Gestión de Categorías</h1>
-        <ol class="breadcrumb mb-4">
-            <li class="breadcrumb-item"><a href="{{ route('panel') }}" style="text-decoration: none;">Inicio</a></li>
-            <li class="breadcrumb-item active" style="color: #667eea;">Categorías</li>
-        </ol>
-
-        @can('crear-categoria')
-            <div class="mb-4">
-                <a href="{{ route('categorias.create') }}" class="btn btn-primary-modern">
-                    <i class="fas fa-plus me-1"></i> Añadir Nueva Categoría
+    <div class="container-fluid px-4 py-4">
+        
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Categorías</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ route('panel') }}" class="text-decoration-none text-muted">Inicio</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Categorías</li>
+                    </ol>
+                </nav>
+            </div>
+            @can('crear-categoria')
+                <a href="{{ route('categorias.create') }}" class="btn-create">
+                    <i class="fas fa-plus"></i> Añadir Nueva Categoría
                 </a>
-            </div>
-        @endcan
+            @endcan
+        </div>
 
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-list me-2"></i>
-                Lista de Categorías
+        <div class="card-clean">
+            <div class="card-header-clean">
+                <div class="card-header-title">
+                    <i class="fas fa-list"></i> Lista de Categorías
+                </div>
             </div>
-            <div class="card-body">
-                <div class="datatable-wrapper">
-                    <table id="datatablesSimple" class="modern-table">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table id="datatablesSimple" class="custom-table">
                         <thead>
                             <tr>
                                 <th>Nombre</th>
                                 <th>Descripción</th>
-                                <th>Editar</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -52,18 +57,18 @@
                                     </td>
                                     <td>
                                         @if($categoria->descripcion)
-                                        <div class="descripcion-truncada-modern" title="{{ $categoria->descripcion }}">
+                                        <div class="descripcion-truncada" title="{{ $categoria->descripcion }}">
                                             {{ $categoria->descripcion }}
                                         </div>
                                         @else
-                                        <span class="text-muted fst-italic">Sin descripción</span>
+                                        <span class="text-muted fst-italic small">--</span>
                                         @endif
                                     </td>
                                     <td>
-                                        <div class="action-btns-modern">
+                                        <div class="btn-action-group">
                                             @can('editar-categoria')
-                                            <a href="{{ route('categorias.edit', $categoria) }}" class="btn-action btn-edit" title="Editar">
-                                                <i class="fas fa-edit"></i>
+                                            <a href="{{ route('categorias.edit', $categoria) }}" class="btn-icon-soft" title="Editar">
+                                                <i class="fas fa-pen"></i>
                                             </a>
                                             @endcan
                                         </div>

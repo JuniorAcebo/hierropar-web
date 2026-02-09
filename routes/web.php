@@ -25,6 +25,12 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
+// --- Exportación Universal ---
+Route::prefix('export')->name('export.')->group(function () {
+    Route::post('/{module}/excel', [App\Http\Controllers\ExportController::class, 'exportExcel'])->name('excel');
+    Route::post('/{module}/pdf', [App\Http\Controllers\ExportController::class, 'exportPdf'])->name('pdf');
+});
+
 // --- Dashboard ---
 Route::get('/', [HomeController::class, 'index'])->name('panel');
 
@@ -66,6 +72,8 @@ Route::prefix('ventas')->name('ventas.')->group(function () {
 
 // --- Gestión de Compras ---
 Route::prefix('compras')->name('compras.')->group(function () {
+    Route::put('/{compra}/estado-pago', [CompraController::class, 'actualizarEstadoPago'])->name('estado-pago');
+    Route::put('/{compra}/estado-entrega', [CompraController::class, 'actualizarEstadoEntrega'])->name('estado-entrega');
     Route::get('/pdf/{id}', [CompraController::class, 'generarPdf'])->name('pdf');
 });
 

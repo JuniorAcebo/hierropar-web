@@ -22,12 +22,55 @@ class ProveedorController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        try{
-            $proveedores = Proveedor::with('persona.documento')->get();
-            return view('proveedor.index',compact('proveedores'));
-        }catch(Exception $e){
+        try {
+            $busqueda = $request->get('busqueda');
+            $perPage  = $request->get('per_page', 10);
+
+            if (!in_array($perPage, [5, 10, 15, 20, 25])) $perPage = 10;
+
+            $query = Proveedor::with('persona.documento');
+
+            if ($busqueda) {
+                $query->whereHas('persona', function ($q) use ($busqueda) {
+                    $q->where('razon_social', 'like', "%{$busqueda}%")
+                        ->orWhere('direccion', 'like', "%{$busqueda}%")
+                        ->orWhere('telefono', 'like', "%{$busqueda}%")
+                        ->orWhere('email', 'like', "%{$busqueda}%")
+                        ->orWhere('numero_documento', 'like', "%{$busqueda}%")
+                        ->orWhere('tipo_persona', 'like', "%{$busqueda}%");
+                })->orWhereHas('persona.documento', function ($q) use ($busqueda) {
+                    $q->where('tipo_documento', 'like', "%{$busqueda}%");
+                });
+            }
+
+            $proveedores = $query->paginate($perPage);
+
+            $totalProveedores = Proveedor::count();
+            $proveedoresActivos = Proveedor::whereHas('persona', fn($q) => $q->where('estado', 1))->count();
+            $proveedoresInactivos = $totalProveedores - $proveedoresActivos;
+
+            if ($request->ajax()) {
+                return view('proveedor.index', compact(
+                    'proveedores',
+                    'busqueda',
+                    'perPage',
+                    'totalProveedores',
+                    'proveedoresActivos',
+                    'proveedoresInactivos'
+                ));
+            }
+
+            return view('proveedor.index', compact(
+                'proveedores',
+                'busqueda',
+                'perPage',
+                'totalProveedores',
+                'proveedoresActivos',
+                'proveedoresInactivos'
+            ));
+        } catch (Exception $e) {
             return redirect()->route('proveedores.index')->with('error', 'Error al mostrar proveedores');
         }
     }
@@ -37,11 +80,11 @@ class ProveedorController extends Controller
      */
     public function create()
     {
-        try{
+        try {
             $documentos = Documento::all();
-            return view('proveedor.create',compact('documentos'));
-        }catch(Exception $e){
-            return redirect()->route('proveedores.create')->with('error', 'Error al mostrar proveedores');
+            return view('proveedor.create', compact('documentos'));
+        } catch (Exception $e) {
+            return redirect()->route('proveedores.index')->with('error', 'Error al abrir el formulario de creación');
         }
     }
 
@@ -50,18 +93,18 @@ class ProveedorController extends Controller
      */
     public function store(StorePersonaRequest $request)
     {
-        try{
+        try {
             DB::beginTransaction();
             $persona = Persona::create($request->validated());
             $persona->proveedor()->create([
                 'persona_id' => $persona->id
             ]);
             DB::commit();
+            return redirect()->route('proveedores.index')->with('success', 'Proveedor registrado correctamente');
         } catch (Exception $e) {
             DB::rollBack();
+            return redirect()->back()->withInput()->with('error', 'Error al registrar el proveedor: ' . $e->getMessage());
         }
-
-        return redirect()->route('proveedores.index')->with('success', 'Proveedor registrado');
     }
 
     /**
@@ -69,45 +112,45 @@ class ProveedorController extends Controller
      */
     public function show(string $id)
     {
-        try{
+        try {
             $proveedor = Proveedor::with('persona.documento')->find($id);
-            return view('proveedor.show',compact('proveedor'));
-        }catch(Exception $e){   
-            return redirect()->route('proveedores.show')->with('error', 'Error al mostrar proveedor');
+            return view('proveedor.show', compact('proveedor'));
+        } catch (Exception $e) {
+            return redirect()->route('proveedores.index')->with('error', 'Error al mostrar el proveedor');
         }
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Proveedore $proveedore)
+    public function edit(Proveedor $proveedore)
     {
-        try{
+        try {
             $proveedore->load('persona.documento');
             $documentos = Documento::all();
-            return view('proveedor.edit',compact('proveedore','documentos'));
-        }catch(Exception $e){
-            return redirect()->route('proveedores.edit')->with('error', 'Error al mostrar proveedor');
+            return view('proveedor.edit', compact('proveedore', 'documentos'));
+        } catch (Exception $e) {
+            return redirect()->route('proveedores.index')->with('error', 'Error al mostrar el proveedor para editar');
         }
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateProveedoreRequest $request, Proveedore $proveedore)
+    public function update(UpdateProveedoreRequest $request, Proveedor $proveedore)
     {
-        try{
+        try {
             DB::beginTransaction();
 
-            Persona::where('id',$proveedore->persona->id)
-            ->update($request->validated());
+            Persona::where('id', $proveedore->persona->id)
+                ->update($request->validated());
 
             DB::commit();
-        }catch(Exception $e){
+            return redirect()->route('proveedores.index')->with('success', 'Proveedor editado correctamente');
+        } catch (Exception $e) {
             DB::rollBack();
+            return redirect()->back()->withInput()->with('error', 'Error al editar el proveedor: ' . $e->getMessage());
         }
-
-        return redirect()->route('proveedores.index')->with('success','Proveedor editado');
     }
 
     /**
@@ -115,22 +158,26 @@ class ProveedorController extends Controller
      */
     public function destroy(string $id)
     {
-        $message = '';
-        $persona = Persona::find($id);
-        if ($persona->estado == 1) {
-            Persona::where('id', $persona->id)
-                ->update([
-                    'estado' => 0
-                ]);
-            $message = 'Proveedor eliminado';
-        } else {
-            Persona::where('id', $persona->id)
-                ->update([
-                    'estado' => 1
-                ]);
-            $message = 'Proveedor restaurado';
-        }
+        try {
+            $message = '';
+            $persona = Persona::find($id);
+            if ($persona->estado == 1) {
+                Persona::where('id', $persona->id)
+                    ->update([
+                        'estado' => 0
+                    ]);
+                $message = 'Proveedor desactivado';
+            } else {
+                Persona::where('id', $persona->id)
+                    ->update([
+                        'estado' => 1
+                    ]);
+                $message = 'Proveedor restaurado';
+            }
 
-        return redirect()->route('proveedores.index')->with('success', $message);
+            return redirect()->route('proveedores.index')->with('success', $message);
+        } catch (Exception $e) {
+            return redirect()->route('proveedores.index')->with('error', 'Error al cambiar el estado del proveedor');
+        }
     }
 }

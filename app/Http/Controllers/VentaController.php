@@ -31,19 +31,100 @@ class VentaController extends Controller
         $this->middleware('permission:eliminar-venta', ['only' => ['destroy']]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $ventas = Venta::with([
-            'comprobante',
-            'cliente.persona',
-            'user'
-        ])
-            ->where('estado', 1)
-            ->latest()
-            ->get();
+        $busqueda = $request->get('busqueda');
+        $perPage  = $request->get('per_page', 10);
+        $sort     = $request->get('sort', 'fecha_hora');
+        $direction = $request->get('direction', 'desc');
 
-        return view('venta.index', compact('ventas'));
+        // Validar per_page y direction
+        if (!in_array($perPage, [5, 10, 15, 20, 25])) $perPage = 10;
+        if (!in_array($direction, ['asc', 'desc'])) $direction = 'desc';
+
+        $query = Venta::with(['comprobante', 'cliente.persona', 'user'])
+            ->where('estado', 1);
+
+        // Filtrar por almacén del usuario
+        $query = $this->filterByUserAlmacen($query);
+
+        // Búsqueda
+        if ($busqueda) {
+            $query->where(function ($q) use ($busqueda) {
+                $q->where('numero_comprobante', 'like', "%{$busqueda}%")
+                    ->orWhereHas('cliente.persona', function ($pq) use ($busqueda) {
+                        $pq->where('razon_social', 'like', "%{$busqueda}%")
+                            ->orWhere('numero_documento', 'like', "%{$busqueda}%");
+                    })
+                    ->orWhereHas('comprobante', function ($cq) use ($busqueda) {
+                        $cq->where('tipo_comprobante', 'like', "%{$busqueda}%");
+                    });
+            });
+        }
+
+        // Ordenamiento
+        switch ($sort) {
+            case 'cliente':
+                $query->join('clientes', 'ventas.cliente_id', '=', 'clientes.id')
+                    ->join('personas', 'clientes.persona_id', '=', 'personas.id')
+                    ->select('ventas.*')
+                    ->orderBy('personas.razon_social', $direction);
+                break;
+            case 'numero_comprobante':
+            case 'total':
+            case 'fecha_hora':
+            case 'estado_pago':
+            case 'estado_entrega':
+                $query->orderBy($sort, $direction);
+                break;
+            default:
+                $query->latest('fecha_hora');
+                break;
+        }
+
+        $ventas = $query->paginate($perPage);
+
+        // Estadísticas para el footer - Filtradas por almacén
+        $statsQuery = Venta::where('estado', 1);
+        $statsQuery = $this->filterByUserAlmacen($statsQuery);
+
+        $totalVentasMonto = (clone $statsQuery)->sum('total');
+        $ventasPagadas = (clone $statsQuery)
+            ->where(function ($q) {
+                $q->where('estado_pago', '!=', 'pendiente')
+                    ->where('estado_pago', '!=', 0);
+            })->count();
+        $ventasPendientesPago = (clone $statsQuery)
+            ->where(function ($q) {
+                $q->where('estado_pago', 'pendiente')
+                    ->orWhere('estado_pago', 0);
+            })->count();
+
+        if ($request->ajax()) {
+            return view('venta.index', compact(
+                'ventas',
+                'busqueda',
+                'perPage',
+                'sort',
+                'direction',
+                'totalVentasMonto',
+                'ventasPagadas',
+                'ventasPendientesPago'
+            ));
+        }
+
+        return view('venta.index', compact(
+            'ventas',
+            'busqueda',
+            'perPage',
+            'sort',
+            'direction',
+            'totalVentasMonto',
+            'ventasPagadas',
+            'ventasPendientesPago'
+        ));
     }
+
 
     public function generarPdf($id, Request $request)
     {
@@ -78,7 +159,14 @@ class VentaController extends Controller
         }])->get();
 
         $comprobantes = Comprobante::all();
-        $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        
+        // Filtrar almacenes disponibles para el usuario
+        $userAlmacenId = auth()->user()->almacen_id;
+        if ($userAlmacenId) {
+            $almacenes = \App\Models\Almacen::where('estado', 1)->where('id', $userAlmacenId)->get();
+        } else {
+            $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        }
         $nextComprobanteNumber = $this->getNextComprobanteNumber();
 
         return view('venta.create', compact('productos', 'clientes', 'comprobantes', 'almacenes', 'nextComprobanteNumber'));
@@ -91,6 +179,13 @@ class VentaController extends Controller
             'producto_id' => 'required|exists:productos,id',
             'almacen_id' => 'required|exists:almacenes,id'
         ]);
+
+        if (!$this->canAccessAlmacen($request->almacen_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Acceso denegado a este almacén.'
+            ], 403);
+        }
 
         $producto = Producto::with('tipounidad')->find($request->producto_id);
 
@@ -117,12 +212,18 @@ class VentaController extends Controller
     protected function getNextComprobanteNumber()
     {
         $lastVenta = Venta::latest()->first();
-        return $lastVenta ? (int)$lastVenta->numero_comprobante + 1 : 1;
+        $nextNumber = $lastVenta ? (int)$lastVenta->numero_comprobante + 1 : 1;
+        return str_pad($nextNumber, 8, '0', STR_PAD_LEFT);
     }
 
     public function store(StoreVentaRequest $request)
     {
         try {
+            // Validar si el usuario tiene permiso para este almacén
+            if (!$this->canAccessAlmacen($request->almacen_id)) {
+                return redirect()->back()->withInput()->with('error', 'No tiene permiso para realizar ventas en este almacén.');
+            }
+
             DB::beginTransaction();
 
             // Validar stock de forma masiva
@@ -130,14 +231,19 @@ class VentaController extends Controller
             foreach ($request->arrayidproducto as $index => $productoId) {
                 $items[] = [
                     'producto_id' => $productoId,
-                    'cantidad' => floatval($request->arraycantidad[$index] ?? 0)
+                    'cantidad' => $request->arraycantidad[$index]
                 ];
             }
             $this->ventaService->validarStockDisponible($items, $request->almacen_id);
 
+            $numeroComprobante = $request->numero_comprobante;
+            if (empty($numeroComprobante)) {
+                $numeroComprobante = $this->getNextComprobanteNumber();
+            }
+
             $venta = Venta::create([
                 'fecha_hora' => $request->fecha_hora ?? now(),
-                'numero_comprobante' => $request->numero_comprobante,
+                'numero_comprobante' => $numeroComprobante,
                 'total' => 0,
                 'estado_pago' => 'pendiente',
                 'estado_entrega' => 'por_entregar',
@@ -188,6 +294,13 @@ class VentaController extends Controller
 
     public function show(Venta $venta)
     {
+        if (!$this->canAccessAlmacen($venta->almacen_id)) {
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Acceso denegado'], 403);
+            }
+            return redirect()->route('ventas.index')->with('error', 'No tiene acceso a esta venta.');
+        }
+
         $venta->load(['comprobante', 'cliente.persona', 'user', 'detalles.producto.tipounidad', 'almacen']);
 
         if (request()->ajax() || request()->wantsJson()) {
@@ -209,8 +322,19 @@ class VentaController extends Controller
             'detalles.producto.tipounidad'
         ])->findOrFail($id);
 
-        $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        if (!$this->canAccessAlmacen($venta->almacen_id)) {
+            return redirect()->route('ventas.index')->with('error', 'No tiene acceso a esta venta.');
+        }
+
         $comprobantes = Comprobante::all();
+        
+        // Filtrar almacenes disponibles para el usuario
+        $userAlmacenId = auth()->user()->almacen_id;
+        if ($userAlmacenId) {
+            $almacenes = \App\Models\Almacen::where('estado', 1)->where('id', $userAlmacenId)->get();
+        } else {
+            $almacenes = \App\Models\Almacen::where('estado', 1)->get();
+        }
 
         $productos = Producto::where('estado', 1)->get();
 
@@ -224,6 +348,12 @@ class VentaController extends Controller
     public function update(UpdateVentaRequest $request, string $id)
     {
         try {
+            // Validar acceso al almacén original y al nuevo
+            $venta = Venta::findOrFail($id);
+            if (!$this->canAccessAlmacen($venta->almacen_id) || !$this->canAccessAlmacen($request->almacen_id)) {
+                return redirect()->back()->withInput()->with('error', 'Acceso denegado al almacén.');
+            }
+
             DB::beginTransaction();
 
             // Cargar con relaciones para el service
@@ -237,7 +367,7 @@ class VentaController extends Controller
 
             // 3. Update Venta info
             $venta->update([
-                'numero_comprobante' => $request->numero_comprobante,
+                'numero_comprobante' => $request->numero_comprobante ?? $venta->numero_comprobante,
                 'fecha_hora' => $request->fecha_hora ?? now(),
                 'cliente_id' => $request->cliente_id,
                 'almacen_id' => $request->almacen_id,
@@ -273,7 +403,7 @@ class VentaController extends Controller
                     'descuento' => $descuento
                 ]);
 
-               $total += ($cantidad * $precioVenta) - $descuento;
+                $total += ($cantidad * $precioVenta) - $descuento;
             }
             $venta->update(['total' => $total]);
 
@@ -296,9 +426,13 @@ class VentaController extends Controller
     public function destroy(string $id)
     {
         try {
-            DB::beginTransaction();
-
             $venta = Venta::with('detalles.producto.tipounidad')->findOrFail($id);
+
+            if (!$this->canAccessAlmacen($venta->almacen_id)) {
+                return redirect()->route('ventas.index')->with('error', 'No tiene acceso para eliminar esta venta.');
+            }
+
+            DB::beginTransaction();
 
             // Revertir stock antes de borrar
             $this->ventaService->revertirStock($venta);
@@ -323,9 +457,27 @@ class VentaController extends Controller
         try {
             $venta = Venta::findOrFail($id);
 
-            $estado = $request->input('estado_pago', 'pagado');
+            if (!$this->canAccessAlmacen($venta->almacen_id)) {
+                return response()->json(['success' => false, 'message' => 'Acceso denegado'], 403);
+            }
 
-            $venta->update(['estado_pago' => $estado]);
+            $estadoAnterior = $venta->estado_pago;
+            $estadoNuevo = $request->input('estado_pago', 'pagado');
+
+            DB::beginTransaction();
+
+            // Si se cancela/anula y no estaba cancelada antes -> Revertir stock
+            if (in_array($estadoNuevo, ['cancelado', 'anulado']) && !in_array($estadoAnterior, ['cancelado', 'anulado'])) {
+                $this->ventaService->revertirStock($venta);
+            }
+            // Si se recupera de cancelado -> Procesar salida stock nuevamente
+            elseif (!in_array($estadoNuevo, ['cancelado', 'anulado']) && in_array($estadoAnterior, ['cancelado', 'anulado'])) {
+                $this->ventaService->procesarSalidaStock($venta);
+            }
+
+            $venta->update(['estado_pago' => $estadoNuevo]);
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,

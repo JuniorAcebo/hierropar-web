@@ -15,7 +15,7 @@
     @include('layouts.partials.alert')
 
     <div class="container-fluid px-4 py-4">
-        
+
         <div class="page-header">
             <div>
                 <h1 class="page-title">Productos</h1>
@@ -48,7 +48,7 @@
                                 <span class="input-group-text bg-white border-end-0" style="padding: 0.4rem 0.75rem;">
                                     <i class="fas fa-search text-muted small"></i>
                                 </span>
-                                <input type="text" name="busqueda" class="form-control form-control-clean border-start-0 ps-0" 
+                                <input type="text" name="busqueda" class="form-control form-control-clean border-start-0 ps-0"
                                     placeholder="Buscar producto..." value="{{ $busqueda ?? '' }}">
                             </div>
                         </div>
@@ -102,31 +102,31 @@
                                     </div>
                                 </th>
                                 <th>
-                                    <button class="sort-btn {{ $sort == 'nombre' ? 'active ' . $direction : '' }}" 
+                                    <button class="sort-btn {{ $sort == 'nombre' ? 'active ' . $direction : '' }}"
                                             data-column="nombre">
                                         Producto <i class="fas fa-sort sort-icon"></i>
                                     </button>
                                 </th>
                                 <th>
-                                    <button class="sort-btn {{ $sort == 'precio_venta' ? 'active ' . $direction : '' }}" 
+                                    <button class="sort-btn {{ $sort == 'precio_venta' ? 'active ' . $direction : '' }}"
                                             data-column="precio_venta">
                                         Precios <i class="fas fa-sort sort-icon"></i>
                                     </button>
                                 </th>
                                 <th class="text-center">
-                                    <button class="sort-btn {{ $sort == 'stock_total' ? 'active ' . $direction : '' }}" 
+                                    <button class="sort-btn {{ $sort == 'stock_total' ? 'active ' . $direction : '' }}"
                                             data-column="stock_total">
                                         Stock Total <i class="fas fa-sort sort-icon"></i>
                                     </button>
                                 </th>
                                 <th>
-                                    <button class="sort-btn {{ $sort == 'categoria' ? 'active ' . $direction : '' }}" 
+                                    <button class="sort-btn {{ $sort == 'categoria' ? 'active ' . $direction : '' }}"
                                             data-column="categoria">
                                         Categoría <i class="fas fa-sort sort-icon"></i>
                                     </button>
                                 </th>
                                 <th>
-                                    <button class="sort-btn {{ $sort == 'estado' ? 'active ' . $direction : '' }}" 
+                                    <button class="sort-btn {{ $sort == 'estado' ? 'active ' . $direction : '' }}"
                                             data-column="estado">
                                         Estado <i class="fas fa-sort sort-icon"></i>
                                     </button>
@@ -158,8 +158,8 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        @php 
-                                            $totalStock = $item->inventarios->sum('stock'); 
+                                        @php
+                                            $totalStock = $item->inventarios->sum('stock');
                                         @endphp
                                         <span class="badge-pill {{ $totalStock <= 10 ? 'badge-danger' : 'badge-success' }}">
                                             {{ $totalStock }}
@@ -307,10 +307,10 @@
                                                         El producto volverá a estar <strong>activo</strong> en el sistema.
                                                     @endif
                                                 </p>
-                                                
+
                                                 <div class="d-flex justify-content-center gap-2">
                                                     <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                                                    
+
                                                     @if($item->estado == 1)
                                                         <form action="{{ route('productos.destroy', $item) }}" method="post" class="d-inline">
                                                             @method('DELETE')
@@ -339,7 +339,7 @@
                                 </div>
                             @endforeach
                         </tbody>
-                        
+
                         <tfoot>
                             <tr class="table-totals">
                                 <td colspan="3" class="text-end">
@@ -396,7 +396,7 @@
 
                         <div class="mb-3">
                             <label class="info-subtext mb-2 text-uppercase letter-spacing-05 small fw-bold">Opciones de Datos</label>
-                            
+
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" id="modalIncludePrices" checked>
                                 <label class="form-check-label d-block" for="modalIncludePrices">
@@ -455,7 +455,7 @@
             checkbox.addEventListener('click', function() {
                 const productId = this.dataset.productId;
                 const row = this.closest('tr');
-                
+
                 if (this.classList.contains('checked')) {
                     // Deseleccionar
                     this.classList.remove('checked');
@@ -467,7 +467,7 @@
                     row.classList.add('selected');
                     selectedProducts.add(productId);
                 }
-                
+
                 updateSelectionUI();
             });
         });
@@ -475,11 +475,11 @@
         // Seleccionar todos
         selectAllCheckbox.addEventListener('click', function() {
             const isSelectAll = !this.classList.contains('checked');
-            
+
             productCheckboxes.forEach(checkbox => {
                 const productId = checkbox.dataset.productId;
                 const row = checkbox.closest('tr');
-                
+
                 if (isSelectAll) {
                     checkbox.classList.add('checked');
                     row.classList.add('selected');
@@ -490,7 +490,7 @@
                     selectedProducts.delete(productId);
                 }
             });
-            
+
             selectAllCheckbox.classList.toggle('checked');
             updateSelectionUI();
         });
@@ -522,10 +522,10 @@
             const confirmBtn = document.getElementById('confirmExportBtn');
             const alertBox = document.getElementById('exportAlert');
             const alertIcon = document.getElementById('exportAlertIcon');
-            
+
             formatInput.value = format;
             document.getElementById('exportCountDisplay').textContent = selectedProducts.size;
-            
+
             if (format === 'excel') {
                 title.innerHTML = '<i class="fas fa-file-excel me-2 text-success"></i> Exportar a Excel';
                 confirmBtn.className = 'btn btn-outline-success btn-sm px-4';
@@ -537,14 +537,14 @@
                 alertBox.className = 'alert alert-danger border-0 bg-danger bg-opacity-10 d-flex align-items-center mb-4';
                 alertIcon.className = 'fas fa-info-circle me-3 fs-5 text-danger';
             }
-            
+
             modal.show();
         }
 
         function updateSelectionUI() {
             const count = selectedProducts.size;
             selectedCountElement.textContent = count;
-            
+
             if (count > 0) {
                 selectionActions.style.display = 'flex';
                 const totalCheckboxes = productCheckboxes.length;
@@ -638,7 +638,7 @@
             searchInput.focus();
             const len = searchInput.value.length;
             searchInput.setSelectionRange(len, len);
-            
+
             searchInput.addEventListener('input', function() {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(() => fetchProducts(), 300);
@@ -656,15 +656,15 @@
                 const column = this.dataset.column;
                 const currentUrl = new URL(window.location.href);
                 let direction = 'asc';
-                
+
                 if (currentUrl.searchParams.get('sort') === column) {
                     direction = currentUrl.searchParams.get('direction') === 'asc' ? 'desc' : 'asc';
                 }
-                
+
                 const params = new URLSearchParams(window.location.search);
                 params.set('sort', column);
                 params.set('direction', direction);
-                
+
                 fetchProducts(`{{ route('productos.index') }}?${params.toString()}`);
             });
         });
@@ -673,7 +673,7 @@
     function fetchProducts(url = null) {
         const searchInput = document.querySelector('input[name="busqueda"]');
         const perPageSelect = document.getElementById('per_page');
-        
+
         let fetchUrl = url;
         if (!fetchUrl) {
             const params = new URLSearchParams(window.location.search);
@@ -683,24 +683,24 @@
         }
 
         tableContainer.style.opacity = '0.6';
-        
+
         fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
             .then(response => response.text())
             .then(html => {
                 const parser = new DOMParser();
                 const newDoc = parser.parseFromString(html, 'text/html');
                 const newContent = newDoc.getElementById('table-container').innerHTML;
-                
+
                 tableContainer.innerHTML = newContent;
                 tableContainer.style.opacity = '1';
-                
+
                 // Limpiar selección al actualizar
                 selectedProducts.clear();
                 document.getElementById('selectionActions').style.display = 'none';
-                
+
                 // Actualizar URL sin recargar
                 window.history.pushState({}, '', fetchUrl);
-                
+
                 initializeEvents();
                 initializeSelectionSystem();
             })
@@ -721,7 +721,7 @@
             const row = e.target.closest('tr[data-product-id]');
             const productId = row.dataset.productId;
             const checkbox = row.querySelector('.product-checkbox');
-            
+
             if (checkbox) {
                 checkbox.click();
             }

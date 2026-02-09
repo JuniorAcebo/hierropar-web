@@ -14,68 +14,74 @@
 @section('content')
 @include('layouts.partials.alert')
 
-<div class="container-fluid px-4">
-    <h1 class="mt-4 text-center">Marcas</h1>
-    <ol class="breadcrumb mb-4">
-        <li class="breadcrumb-item"><a href="{{ route('panel') }}">Inicio</a></li>
-        <li class="breadcrumb-item active">Marcas</li>
-    </ol>
-
-    @can('crear-marca')
-    <div class="mb-4">
-        <a href="{{route('marcas.create')}}" class="btn btn-primary">
-            <i class="fas fa-plus me-1"></i> Añadir Nueva Marca
-        </a>
-    </div>
-    @endcan
-
-    <div class="card mb-4">
-        <div class="card-header">
-            <i class="fas fa-table me-1"></i>
-            Tabla de marcas
+    <div class="container-fluid px-4 py-4">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Marcas</h1>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ route('panel') }}" class="text-decoration-none text-muted">Inicio</a></li>
+                        <li class="breadcrumb-item active" aria-current="page">Marcas</li>
+                    </ol>
+                </nav>
+            </div>
+            @can('crear-marca')
+            <a href="{{ route('marcas.create') }}" class="btn-create">
+                <i class="fas fa-plus"></i> Añadir Nueva Marca
+            </a>
+            @endcan
         </div>
-        <div class="card-body">
-            <table id="datatablesSimple" class="light-table">
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Descripción</th>
-                        <th>Editar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ($marcas as $item)
-                    <tr>
-                        <td class="fw-semibold">
-                            {{ $item->nombre }}
-                        </td>
 
-                        <td>
-                            <div class="descripcion-truncada"
-                                title="{{ $item->descripcion }}">
-                                {{ $item->descripcion }}
-                            </div>
-                        </td>
+        <div class="card-clean">
+            <div class="card-header-clean">
+                <div class="card-header-title">
+                    <i class="fas fa-tags"></i> Tabla de Marcas
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table id="datatablesSimple" class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Descripción</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($marcas as $item)
+                            <tr>
+                                <td class="fw-semibold">
+                                    {{ $item->nombre }}
+                                </td>
 
-                        <td>
-                            <div class="action-btns">
-                                @can('editar-marca')
-                                <a class="action-btn"
-                                href="{{ route('marcas.edit', $item) }}"
-                                title="Editar">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                @endcan
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
-                    </tbody>
+                                <td>
+                                    @if($item->descripcion)
+                                        <div class="descripcion-truncada" title="{{ $item->descripcion }}">
+                                            {{ $item->descripcion }}
+                                        </div>
+                                    @else
+                                        <span class="text-muted fst-italic small">--</span>
+                                    @endif
+                                </td>
 
-            </table>
+                                <td>
+                                    <div class="btn-action-group">
+                                        @can('editar-marca')
+                                        <a href="{{ route('marcas.edit', $item) }}" class="btn-icon-soft" title="Editar">
+                                            <i class="fas fa-pen"></i>
+                                        </a>
+                                        @endcan
+                                    </div>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 @endsection
 
 @push('js')
