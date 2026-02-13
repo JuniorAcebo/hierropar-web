@@ -266,7 +266,7 @@
             ['variant'=>'kpi-success','icon'=>'fa-people-group',     'title'=>'Clientes',           'count'=>$metricas['totalClientes'],        'route'=>route('clientes.index')],
             ['variant'=>'kpi-danger', 'icon'=>'fa-shopping-bag',    'title'=>'Compras',            'count'=>$metricas['totalCompras'],         'route'=>route('compras.index')],
             ['variant'=>'kpi-purple','icon'=>'fa-cart-shopping',    'title'=>'Ventas',             'count'=>$metricas['totalVentas'],          'route'=>route('ventas.index')],
-            ['variant'=>'kpi-lime',   'icon'=>'fa-users',           'title'=>'Grupo Clientes',     'count'=>$metricas['totalGrupoClientes'],   'route'=>route('grupoClientes.index')],
+            ['variant'=>'kpi-lime',   'icon'=>'fa-users',           'title'=>'Grupo Clientes',     'count'=>$metricas['totalGrupoClientes'],   'route'=>route('grupoclientes.index')],
             ['variant'=>'kpi-info',   'icon'=>'fa-bullhorn',        'title'=>'Marcas',             'count'=>$metricas['totalMarcas'],          'route'=>route('marcas.index')],
             ['variant'=>'kpi-teal',   'icon'=>'fa-cubes',           'title'=>'Productos',          'count'=>$metricas['totalProductos'],       'route'=>route('productos.index')],
             ['variant'=>'kpi-pink',   'icon'=>'fa-truck-field',     'title'=>'Proveedores',        'count'=>$metricas['totalProveedores'],     'route'=>route('proveedores.index')],
@@ -280,7 +280,7 @@
         <script>
             document.addEventListener("DOMContentLoaded", function() {
                 Swal.fire({
-                    title: 'Â¡Excelente!',
+                    title: '¡Excelente!',
                     text: "{{ session('success') }}",
                     icon: 'success',
                     confirmButtonText: 'Continuar',

@@ -108,7 +108,7 @@ Route::prefix('admin')->group(function () {
             'roles'         => RoleController::class,
             'traslados'     => TrasladoController::class,
             'almacenes'     => AlmacenController::class,
-            'grupoClientes' => GrupoClientesController::class,
+            'grupoclientes' => GrupoClientesController::class,
         ], [
             'parameters' => ['almacenes' => 'almacen']
         ]);

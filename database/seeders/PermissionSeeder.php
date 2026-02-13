@@ -81,6 +81,12 @@ class PermissionSeeder extends Seeder
             'mostrar-venta',
             'eliminar-venta',
 
+            //Ver GrupoCliente
+            'ver-grupocliente',
+            'crear-grupocliente',
+            'editar-grupocliente',
+            'eliminar-grupocliente',
+
             //User
             'ver-user',
             'crear-user',

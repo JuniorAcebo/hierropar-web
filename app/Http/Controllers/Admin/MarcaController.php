@@ -12,7 +12,7 @@ class MarcaController extends Controller
 {
     function __construct()
     {
-        $this->middleware('permission:ver-marca|crear-marca|editar-marca|eliminar-marca', ['only' => ['index']]);
+        $this->middleware('permission:ver-marca', ['only' => ['index']]);
         $this->middleware('permission:crear-marca', ['only' => ['create', 'store']]);
         $this->middleware('permission:editar-marca', ['only' => ['edit', 'update']]);
     }

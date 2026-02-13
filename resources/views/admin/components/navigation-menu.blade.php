@@ -129,6 +129,20 @@
                     </a>
                 @endcan
 
+                @can('ver-almacen')
+                    <a class="nav-link" href="{{ route('almacenes.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fa-solid fa-warehouse"></i></div>
+                        Almacenes
+                    </a>
+                @endcan
+
+                @can('ver-grupocliente')
+                    <a class="nav-link" href="{{ route('grupoclientes.index') }}">
+                        <div class="sb-nav-link-icon"><i class="fa-solid fa-users-gear"></i></div>
+                        Grupos de Clientes
+                    </a>
+                @endcan
+
                 <!-- OTROS -->
                 @can('ver-categoria')
                     <a class="nav-link" href="{{ route('categorias.index') }}">
@@ -149,12 +163,6 @@
                     </a>
                 @endcan
                 
-                @can('ver-almacen')
-                    <a class="nav-link" href="{{ route('almacenes.index') }}">
-                        <div class="sb-nav-link-icon"><i class="fa-solid fa-warehouse"></i></div>
-                        Almacenes
-                    </a>
-                @endcan
 
                 @hasrole('ADMINISTRADOR')
                     <div class="sb-sidenav-menu-heading">Administración</div>
