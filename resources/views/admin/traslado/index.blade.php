@@ -36,7 +36,7 @@
         <div class="card-clean">
             <div class="card-header-clean">
                 <div class="card-header-title">
-                    <i class="fas fa-list"></i> Lista de Traslados
+                    <i class="fas fa-truck-moving"></i> Lista de Traslados
                 </div>
             </div>
 

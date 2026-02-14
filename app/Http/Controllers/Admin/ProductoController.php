@@ -15,6 +15,7 @@ use App\Services\ProductoService;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -265,6 +266,10 @@ class ProductoController extends Controller
             );
             return redirect()->route('productos.index')
                 ->with('success', 'Stock ajustado correctamente.');
+        } catch (ValidationException $e) {
+            return back()
+                ->withErrors($e->errors())
+                ->withInput();
         } catch (\Exception $e) {
             return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
         }
@@ -357,6 +362,10 @@ class ProductoController extends Controller
             );
             return redirect()->route('productos.historialAjustes')
                 ->with('success', 'Stock ajustado correctamente.');
+        } catch (ValidationException $e) {
+            return back()
+                ->withErrors($e->errors())
+                ->withInput();
         } catch (\Exception $e) {
             return back()->with('error', 'Error al ajustar stock: ' . $e->getMessage());
         }
@@ -385,21 +394,35 @@ class ProductoController extends Controller
             $includePrices = filter_var($request->input('includePrices', true), FILTER_VALIDATE_BOOLEAN);
             $includeStock = filter_var($request->input('includeStock', true), FILTER_VALIDATE_BOOLEAN);
             $includeAllDetails = filter_var($request->input('includeAllDetails', true), FILTER_VALIDATE_BOOLEAN);
+
+            $almacenes = $includeStock
+                ? Almacen::where('estado', true)->orderBy('nombre')->get(['id', 'nombre'])
+                : collect();
             
             if (!empty($productIds)) {
-                $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
+                $productos = Producto::with([
+                        'marca',
+                        'categoria',
+                        'tipounidad',
+                        'inventarios:id,producto_id,almacen_id,stock',
+                    ])
                     ->withSum('inventarios as stock_total', 'stock')
                     ->whereIn('id', $productIds)
                     ->get();
             } else {
-                $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
+                $productos = Producto::with([
+                        'marca',
+                        'categoria',
+                        'tipounidad',
+                        'inventarios:id,producto_id,almacen_id,stock',
+                    ])
                     ->withSum('inventarios as stock_total', 'stock')
                     ->get();
             }
-            
+            $filename = 'productos_' . now()->format('Y-m-d_H-i-s') . '.xlsx';
             return Excel::download(
-                new ProductosExport($productos, $includePrices, $includeStock, $includeAllDetails),
-                'productos.xlsx'
+                new ProductosExport($productos, $includePrices, $includeStock, $includeAllDetails, $almacenes),
+                $filename
             );
 
         } catch (\Exception $e) {
@@ -416,22 +439,36 @@ class ProductoController extends Controller
             $includePrices = filter_var($request->input('includePrices', true), FILTER_VALIDATE_BOOLEAN);
             $includeStock = filter_var($request->input('includeStock', true), FILTER_VALIDATE_BOOLEAN);
             $includeAllDetails = filter_var($request->input('includeAllDetails', true), FILTER_VALIDATE_BOOLEAN);
+
+            $almacenes = $includeStock
+                ? Almacen::where('estado', true)->orderBy('nombre')->get(['id', 'nombre'])
+                : collect();
             
             if (!empty($productIds)) {
-                $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
+                $productos = Producto::with([
+                        'marca',
+                        'categoria',
+                        'tipounidad',
+                        'inventarios:id,producto_id,almacen_id,stock',
+                    ])
                     ->withSum('inventarios as stock_total', 'stock')
                     ->whereIn('id', $productIds)
                     ->get();
             } else {
-                $productos = Producto::with(['marca', 'categoria', 'tipounidad'])
+                $productos = Producto::with([
+                        'marca',
+                        'categoria',
+                        'tipounidad',
+                        'inventarios:id,producto_id,almacen_id,stock',
+                    ])
                     ->withSum('inventarios as stock_total', 'stock')
                     ->get();
             }
 
-            $pdf = Pdf::loadview('admin.producto.pdf', compact('productos', 'includePrices', 'includeStock', 'includeAllDetails'))
+            $pdf = Pdf::loadview('admin.producto.pdf', compact('productos', 'almacenes', 'includePrices', 'includeStock', 'includeAllDetails'))
                 ->setPaper('a4', 'landscape');
 
-            return $pdf->download('reporte-productos.pdf');
+            return $pdf->download('reporte-productos_'.now()->format('Y-m-d_H-i-s').'.pdf');
 
         } catch (\Exception $e) {
             return back()->with('error', 'Error al exportar PDF: ' . $e->getMessage());

@@ -166,7 +166,7 @@
                             <div class="row">
                                 <div class="col-md-4 form-section">
                                     <label class="form-label">Sucursal</label>
-                                    <select name="almacen_id" class="form-select" required>
+                                    <select name="almacen_id" id="almacen_id" class="form-select" required>
                                         <option value="">Seleccione...</option>
                                         @foreach($almacenes as $alm)
                                             <option value="{{ $alm->id }}" {{ old('almacen_id') == $alm->id ? 'selected' : '' }}>
@@ -195,6 +195,7 @@
                                     <label class="form-label">Cantidad</label>
                                     <input type="number" step="0.001" name="cantidad" class="form-control" 
                                            placeholder="0.000" required min="0.001" value="{{ old('cantidad') }}">
+                                    <small id="stockActualText" class="text-muted d-block mt-1">Stock actual: --</small>
                                     @error('cantidad')
                                         <small class="text-danger">{{ $message }}</small>
                                     @enderror
@@ -211,7 +212,7 @@
                             </div>
 
                             <div class="d-flex justify-content-end gap-2 mt-4">
-                                <a href="{{ route('productos.index') }}" class="btn btn-outline-secondary btn-sm">
+                                <a href="{{ route('productos.historialAjustes') }}" class="btn btn-outline-secondary btn-sm">
                                     Cancelar
                                 </a>
                                 <button type="submit" class="btn btn-primary-clean btn-sm">
@@ -227,6 +228,7 @@
 @endsection
 
 @push('js')
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script>
         $(document).ready(function() {
@@ -235,6 +237,76 @@
                 placeholder: 'Seleccione un producto...',
                 allowClear: false
             });
+
+            const stockUrl = '{{ route("productos.checkStock") }}';
+            const productoSelect = document.getElementById('producto_id');
+            const almacenSelect = document.getElementById('almacen_id');
+            const tipoSelect = document.getElementById('tipo_ajuste');
+            const cantidadInput = document.querySelector('input[name="cantidad"]');
+            const stockActualText = document.getElementById('stockActualText');
+            const submitBtn = document.querySelector('button[type="submit"]');
+
+            let stockActual = null;
+            let stockReqSeq = 0;
+
+            function setStockText(value) {
+                stockActual = value;
+                if (!stockActualText) return;
+                if (value === null) stockActualText.textContent = 'Stock actual: --';
+                else stockActualText.textContent = `Stock actual: ${value}`;
+            }
+
+            async function refreshStock() {
+                const productoId = productoSelect?.value;
+                const almacenId = almacenSelect?.value;
+                if (!productoId || !almacenId) {
+                    setStockText(null);
+                    validateCantidad();
+                    return;
+                }
+
+                const mySeq = ++stockReqSeq;
+                try {
+                    const data = await $.ajax({
+                        url: stockUrl,
+                        method: 'GET',
+                        dataType: 'json',
+                        data: { producto_id: productoId, almacen_id: almacenId }
+                    });
+                    if (mySeq !== stockReqSeq) return;
+                    setStockText(parseFloat(data?.stock) || 0);
+                } catch (e) {
+                    if (mySeq !== stockReqSeq) return;
+                    setStockText(null);
+                } finally {
+                    validateCantidad();
+                }
+            }
+
+            function validateCantidad() {
+                if (!cantidadInput || !tipoSelect) return;
+                const qty = parseFloat(cantidadInput.value) || 0;
+
+                if (tipoSelect.value === 'restar' && stockActual !== null) {
+                    if (qty > stockActual) {
+                        cantidadInput.setCustomValidity(`No se puede restar ${qty}. Stock disponible: ${stockActual}.`);
+                    } else {
+                        cantidadInput.setCustomValidity('');
+                    }
+                } else {
+                    cantidadInput.setCustomValidity('');
+                }
+
+                if (submitBtn) submitBtn.disabled = !!cantidadInput.validationMessage;
+            }
+
+            $('#producto_id').on('change', refreshStock);
+            $('#producto_id').on('select2:select', refreshStock);
+            $('#almacen_id').on('change', refreshStock);
+            $('#tipo_ajuste').on('change', validateCantidad);
+            $(cantidadInput).on('input', validateCantidad);
+
+            refreshStock();
         });
     </script>
 @endpush

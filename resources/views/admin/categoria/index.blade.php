@@ -36,7 +36,7 @@
         <div class="card-clean">
             <div class="card-header-clean">
                 <div class="card-header-title">
-                    <i class="fas fa-list"></i> Lista de Categorías
+                    <i class="fas fa-layer-group"></i> Lista de Categorías
                 </div>
             </div>
             <div class="card-body p-0">

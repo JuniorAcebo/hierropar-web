@@ -88,10 +88,19 @@
                 <th width="5%">ID</th>
                 <th width="10%">CODIGO</th>
                 <th>PRODUCTO</th>
-                <th width="15%">CATEGORIA</th>
-                <th width="15%">MARCA</th>
-                <th width="10%" class="text-right">P. VENTA</th>
-                <th width="8%" class="text-center">STOCK</th>
+                @if(!empty($includeAllDetails))
+                    <th width="12%">CATEGORIA</th>
+                    <th width="12%">MARCA</th>
+                    <th width="10%">UNIDAD</th>
+                @endif
+                @if(!empty($includePrices))
+                    <th width="9%" class="text-right">P. COMPRA</th>
+                    <th width="9%" class="text-right">P. VENTA</th>
+                @endif
+                @if(!empty($includeStock))
+                    <th width="7%" class="text-center">STOCK TOTAL</th>
+                    <th width="18%">STOCK POR SUCURSAL</th>
+                @endif
                 <th width="8%" class="text-center">ESTADO</th>
             </tr>
         </thead>
@@ -103,14 +112,33 @@
                 <td>
                     <strong>{{ $producto->nombre }}</strong>
                 </td>
-                <td>{{ $producto->categoria->nombre ?? 'N/A' }}</td>
-                <td>{{ $producto->marca->nombre ?? 'N/A' }}</td>
-                <td class="text-right">Bs. {{ number_format($producto->precio_venta, 2) }}</td>
-                <td class="text-center">
-                    <span style="font-weight: bold; {{ ($producto->stock_total <= 10) ? 'color: #991b1b;' : 'color: #065f46;' }}">
-                        {{ number_format($producto->stock_total, 0) }}
-                    </span>
-                </td>
+                @if(!empty($includeAllDetails))
+                    <td>{{ $producto->categoria->nombre ?? 'N/A' }}</td>
+                    <td>{{ $producto->marca->nombre ?? 'N/A' }}</td>
+                    <td>{{ $producto->tipounidad->nombre ?? 'N/A' }}</td>
+                @endif
+                @if(!empty($includePrices))
+                    <td class="text-right">Bs. {{ number_format($producto->precio_compra, 2) }}</td>
+                    <td class="text-right">Bs. {{ number_format($producto->precio_venta, 2) }}</td>
+                @endif
+                @if(!empty($includeStock))
+                    <td class="text-center">
+                        <span style="font-weight: bold; {{ (($producto->stock_total ?? 0) <= 10) ? 'color: #991b1b;' : 'color: #065f46;' }}">
+                            {{ number_format($producto->stock_total ?? 0, 0) }}
+                        </span>
+                    </td>
+                    <td style="font-size:8px; line-height:1.2;">
+                        @php
+                            $invByAlmacen = $producto->inventarios->keyBy('almacen_id');
+                        @endphp
+                        @foreach(($almacenes ?? []) as $almacen)
+                            <div>
+                                <strong>{{ $almacen->nombre }}:</strong>
+                                {{ number_format(optional($invByAlmacen->get($almacen->id))->stock ?? 0, 0) }}
+                            </div>
+                        @endforeach
+                    </td>
+                @endif
                 <td class="text-center">
                     @if($producto->estado == 1)
                         <span class="badge badge-success">ACTIVO</span>

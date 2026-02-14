@@ -196,9 +196,9 @@
                 <p>Tipo de cliente: <span class="fw-bold">{{ strtoupper($cliente->persona->tipo_persona) }}</span>
                 <span class="client-type-badge">
                     @if($cliente->persona->tipo_persona == 'natural')
-                    ðŸ‘¤ Persona Natural
+                    Persona Natural
                     @else
-                    ðŸ¢ Persona Jurídica
+                    Persona Jurídica
                     @endif
                 </span>
                 </p>
@@ -232,6 +232,46 @@
                            placeholder="Ingrese la dirección completa">
                     @error('direccion')
                     <small class="text-danger">{{ $message }}</small>
+                    @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="telefono" class="form-label">Teléfono:</label>
+                    <input required type="text" name="telefono" id="telefono" class="form-control"
+                           value="{{ old('telefono', $cliente->persona->telefono) }}"
+                           placeholder="Ingrese el número de teléfono">
+                    @error('telefono')
+                        <small class="text-danger">{{ $message }}</small>
+                    @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="grupo_cliente_id" class="form-label">Grupo de cliente:</label>
+                    <select class="form-select" name="grupo_cliente_id" id="grupo_cliente_id" required>
+                        @foreach ($grupos as $grupo)
+                            <option value="{{ $grupo->id }}"
+                                {{ (old('grupo_cliente_id', $cliente->grupo_cliente_id) == $grupo->id) ? 'selected' : '' }}>
+                                {{ $grupo->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('grupo_cliente_id')
+                        <small class="text-danger">{{ $message }}</small>
+                    @enderror
+                </div>
+
+                <div class="col-md-6">
+                    <label for="estado" class="form-label">Estado:</label>
+                    <select name="estado" id="estado" class="form-select" required>
+                        <option value="1" {{ old('estado', $cliente->persona->estado) == 1 ? 'selected' : '' }}>
+                            Activo
+                        </option>
+                        <option value="0" {{ old('estado', $cliente->persona->estado) == 0 ? 'selected' : '' }}>
+                            Inactivo
+                        </option>
+                    </select>
+                    @error('estado')
+                        <small class="text-danger">{{ $message }}</small>
                     @enderror
                 </div>
 

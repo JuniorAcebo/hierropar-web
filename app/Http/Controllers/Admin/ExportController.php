@@ -24,6 +24,67 @@ use Spatie\Permission\Models\Role;
 
 class ExportController extends Controller
 {
+    protected function buildClientesExportConfig(Request $request): array
+    {
+        $includeContact = filter_var($request->input('includeContact', true), FILTER_VALIDATE_BOOLEAN);
+        $includeDocument = filter_var($request->input('includeDocument', true), FILTER_VALIDATE_BOOLEAN);
+        $includeAll = filter_var($request->input('includeAll', true), FILTER_VALIDATE_BOOLEAN);
+
+        if ($includeAll) {
+            $includeContact = true;
+            $includeDocument = true;
+        }
+
+        $headings = ['ID', 'Razón Social', 'Grupo', 'Tipo'];
+        $mapping = [
+            'id',
+            'persona.razon_social',
+            function ($item) {
+                return $item->grupo->nombre ?? 'N/A';
+            },
+            function ($item) {
+                $tipo = $item->persona->tipo_persona ?? null;
+                if ($tipo === 'natural') return 'Natural';
+                if ($tipo === 'juridica') return 'Jurídica';
+                return $tipo ?: 'N/A';
+            },
+        ];
+
+        if ($includeDocument) {
+            $headings[] = 'Tipo Doc.';
+            $headings[] = 'Número Doc.';
+            $mapping[] = 'persona.documento.tipo_documento';
+            $mapping[] = 'persona.numero_documento';
+        }
+
+        if ($includeContact) {
+            $headings[] = 'Dirección';
+            $headings[] = 'Teléfono';
+            $mapping[] = 'persona.direccion';
+            $mapping[] = 'persona.telefono';
+        }
+
+        if ($includeAll) {
+            $headings[] = 'Descuento Grupo (%)';
+            $mapping[] = function ($item) {
+                return $item->grupo->descuento_global ?? 0;
+            };
+        }
+
+        $headings[] = 'Estado';
+        $mapping[] = function ($item) {
+            return ($item->persona && $item->persona->estado) ? 'Activo' : 'Inactivo';
+        };
+
+        return [
+            'model' => Cliente::class,
+            'relations' => ['persona.documento', 'grupo'],
+            'title' => 'Reporte de Clientes',
+            'headings' => $headings,
+            'mapping' => $mapping,
+        ];
+    }
+
     protected function getModuleConfig($module)
     {
         $configs = [
@@ -41,17 +102,24 @@ class ExportController extends Controller
             ],
             'clientes' => [
                 'model' => Cliente::class,
-                'relations' => ['persona.documento'],
+                'relations' => ['persona.documento', 'grupo'],
                 'title' => 'Reporte de Clientes',
-                'headings' => ['ID', 'Razón Social', 'Tipo Doc.', 'Número Doc.', 'Dirección', 'Teléfono', 'Email', 'Estado'],
+                'headings' => ['ID', 'Razón Social', 'Grupo', 'Tipo', 'Tipo Doc.', 'Número Doc.', 'Dirección', 'Teléfono', 'Descuento Grupo (%)', 'Estado'],
                 'mapping' => [
                     'id', 
-                    'persona.razon_social', 
+                    'persona.razon_social',
+                    function($item) { return $item->grupo->nombre ?? 'N/A'; },
+                    function($item) {
+                        $tipo = $item->persona->tipo_persona ?? null;
+                        if ($tipo === 'natural') return 'Natural';
+                        if ($tipo === 'juridica') return 'Jurídica';
+                        return $tipo ?: 'N/A';
+                    },
                     'persona.documento.tipo_documento', 
                     'persona.numero_documento', 
                     'persona.direccion', 
                     'persona.telefono', 
-                    'persona.email', 
+                    function($item) { return $item->grupo->descuento_global ?? 0; },
                     function($item) { return $item->persona->estado ? 'Activo' : 'Inactivo'; }
                 ]
             ],
@@ -166,7 +234,9 @@ class ExportController extends Controller
             return app(ProductoController::class)->exportExcel($request);
         }
 
-        $config = $this->getModuleConfig($module);
+        $config = $module === 'clientes'
+            ? $this->buildClientesExportConfig($request)
+            : $this->getModuleConfig($module);
         if (!$config) {
             return back()->with('error', 'Modulo de exportación no válido.');
         }
@@ -192,9 +262,10 @@ class ExportController extends Controller
             // Necesitamos pasar la colección y la configuración de mapeo
             // El mapeo se ejecuta dentro de UniversalExport::map()
             
+
             return Excel::download(
                 new UniversalExport($collection, $config['headings'], $config['mapping']),
-                $module . '_' . date('Y-m-d_His') . '.xlsx'
+                $module . '_' . now()->format('Y-m-d_H-i-s') . '.xlsx'
             );
 
         } catch (\Exception $e) {
@@ -209,7 +280,9 @@ class ExportController extends Controller
             return app(ProductoController::class)->exportPdf($request);
         }
 
-        $config = $this->getModuleConfig($module);
+        $config = $module === 'clientes'
+            ? $this->buildClientesExportConfig($request)
+            : $this->getModuleConfig($module);
         if (!$config) {
             return back()->with('error', 'Modulo de exportación no válido.');
         }
@@ -249,7 +322,7 @@ class ExportController extends Controller
                 'date' => now()->format('d/m/Y H:i')
             ])->setPaper('a4', 'landscape');
 
-            return $pdf->download($module . '_reporte.pdf');
+            return $pdf->download($module . '_reporte_' . now()->format('Y-m-d_H-i-s') . '.pdf');
 
         } catch (\Exception $e) {
             return back()->with('error', 'Error al exportar PDF: ' . $e->getMessage());

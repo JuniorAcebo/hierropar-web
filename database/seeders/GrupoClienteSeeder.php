@@ -15,6 +15,11 @@ class GrupoClienteSeeder extends Seeder
     {
         $grupoClientes = [
             [
+                'nombre' => 'General',
+                'descripcion' => 'Clientes estándar sin descuentos especiales. Aplicable a ventas minoristas o clientes ocasionales.',
+                'descuento_global' => 0.00
+            ],
+            [
                 'nombre' => 'Facturadores',
                 'descripcion' => 'Clientes frecuentes que realizan compras al por mayor y requieren facturación continua. Acceden a un descuento preferencial.',
                 'descuento_global' => 10.00
@@ -23,11 +28,6 @@ class GrupoClienteSeeder extends Seeder
                 'nombre' => 'Ferreterias',
                 'descripcion' => 'Ferreterías asociadas que compran productos para reventa. Reciben un descuento especial por volumen.',
                 'descuento_global' => 5.00
-            ],
-            [
-                'nombre' => 'General',
-                'descripcion' => 'Clientes estándar sin descuentos especiales. Aplicable a ventas minoristas o clientes ocasionales.',
-                'descuento_global' => 0.00
             ]
         ];
 

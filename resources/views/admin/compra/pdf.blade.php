@@ -101,7 +101,7 @@
             </td>
             <td width="40%" class="text-right">
                 <div class="doc-title">NOTA DE COMPRA</div>
-                <div style="font-size:12px;">NÂ° {{ $compra->numero_comprobante }}</div>
+                <div style="font-size:12px;">Nro: {{ $compra->numero_comprobante }}</div>
                 <div style="font-size:9px; color:#555;">{{ \Carbon\Carbon::parse($compra->fecha_hora)->format('d/m/Y H:i A') }}</div>
             </td>
         </tr>

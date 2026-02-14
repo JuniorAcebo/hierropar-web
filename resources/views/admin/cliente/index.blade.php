@@ -101,11 +101,42 @@
                                 <th class="checkbox-header">
                                     <div class="custom-checkbox select-all" id="selectAll"></div>
                                 </th>
-                                <th>Cliente / Razón Social</th>
-                                <th>Contacto</th>
-                                <th>Documento</th>
-                                <th>Tipo</th>
-                                <th>Estado</th>
+                                <th>
+                                    <button class="sort-btn {{ ($sort ?? 'razon_social') == 'razon_social' ? 'active ' . ($direction ?? 'asc') : '' }}"
+                                            data-column="razon_social">
+                                        Cliente / Razón Social <i class="fas fa-sort sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button class="sort-btn {{ ($sort ?? '') == 'grupo' ? 'active ' . ($direction ?? 'asc') : '' }}"
+                                            data-column="grupo">
+                                        Grupo <i class="fas fa-sort sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button class="sort-btn {{ ($sort ?? '') == 'telefono' ? 'active ' . ($direction ?? 'asc') : '' }}"
+                                            data-column="telefono">
+                                        Teléfono <i class="fas fa-sort sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button class="sort-btn {{ ($sort ?? '') == 'documento' ? 'active ' . ($direction ?? 'asc') : '' }}"
+                                            data-column="documento">
+                                        Documento <i class="fas fa-sort sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button class="sort-btn {{ ($sort ?? '') == 'tipo_persona' ? 'active ' . ($direction ?? 'asc') : '' }}"
+                                            data-column="tipo_persona">
+                                        Tipo <i class="fas fa-sort sort-icon"></i>
+                                    </button>
+                                </th>
+                                <th>
+                                    <button class="sort-btn {{ ($sort ?? '') == 'estado' ? 'active ' . ($direction ?? 'asc') : '' }}"
+                                            data-column="estado">
+                                        Estado <i class="fas fa-sort sort-icon"></i>
+                                    </button>
+                                </th>
                                 <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
@@ -117,9 +148,6 @@
                                     </td>
                                     <td>
                                         <div class="cliente-info">
-                                            <div class="cliente-avatar">
-                                                {{ strtoupper(substr($item->persona->razon_social, 0, 1)) }}
-                                            </div>
                                             <div>
                                                 <div class="fw-semibold">{{ $item->persona->razon_social }}</div>
                                                 <span class="info-subtext">{{ Str::limit($item->persona->direccion, 30) }}</span>
@@ -127,8 +155,13 @@
                                         </div>
                                     </td>
                                     <td>
+                                        <div class="fw-semibold">{{ $item->grupo->nombre ?? 'Sin grupo' }}</div>
+                                        @if(!empty($item->grupo?->descuento_global))
+                                            <div class="info-subtext">Desc: {{ number_format($item->grupo->descuento_global, 2) }}%</div>
+                                        @endif
+                                    </td>
+                                    <td>
                                         <div class="fw-semibold">{{ $item->persona->telefono ?? 'N/A' }}</div>
-                                        <div class="info-subtext">{{ $item->persona->email ?? 'Sin email' }}</div>
                                     </td>
                                     <td>
                                         <div class="fw-semibold">{{ $item->persona->documento->tipo_documento ?? 'N/A' }}</div>
@@ -182,20 +215,20 @@
                                                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                             </div>
                                             <div class="modal-body p-4 text-center">
-                                                <h6 class="mb-3">{{ $item->persona->estado == 1 ? '¿Eliminar cliente?' : '¿Restaurar cliente?' }}</h6>
+                                                <h6 class="mb-3">{{ $item->persona->estado == 1 ? '¿Desactivar cliente?' : '¿Activar cliente?' }}</h6>
                                                 <p class="text-muted small mb-4">
                                                     {{ $item->persona->estado == 1
-                                                        ? 'El cliente se desactivará del sistema.'
+                                                        ? 'El cliente pasará a estado inactivo (no se eliminará).'
                                                         : 'El cliente volverá a estar activo.' }}
                                                 </p>
 
                                                 <div class="d-flex justify-content-center gap-2">
                                                     <button type="button" class="btn btn-outline-secondary btn-sm px-3" data-bs-dismiss="modal">Cancelar</button>
-                                                    <form action="{{ route('clientes.destroy', ['cliente' => $item->persona->id]) }}" method="post" class="d-inline">
-                                                        @method('DELETE')
+                                                    <form action="{{ route('clientes.changeState', ['persona' => $item->persona->id]) }}" method="post" class="d-inline">
+                                                        @method('PATCH')
                                                         @csrf
                                                         <button type="submit" class="btn {{ $item->persona->estado == 1 ? 'btn-outline-danger' : 'btn-outline-success' }} btn-sm px-3">
-                                                            {{ $item->persona->estado == 1 ? 'Eliminar' : 'Restaurar' }}
+                                                            {{ $item->persona->estado == 1 ? 'Desactivar' : 'Activar' }}
                                                         </button>
                                                     </form>
                                                 </div>
@@ -234,7 +267,12 @@
                         Mostrando {{ $clientes->firstItem() }} - {{ $clientes->lastItem() }} de {{ $clientes->total() }} registros
                     </div>
                     <div>
-                        {{ $clientes->appends(['busqueda' => $busqueda ?? '', 'per_page' => $perPage ?? 10])->links() }}
+                        {{ $clientes->appends([
+                            'busqueda' => $busqueda ?? '',
+                            'per_page' => $perPage ?? 10,
+                            'sort' => $sort ?? 'razon_social',
+                            'direction' => $direction ?? 'asc',
+                        ])->links() }}
                     </div>
                 </div>
             </div>
@@ -266,7 +304,7 @@
                                 <input class="form-check-input" type="checkbox" id="modalIncludeContact" checked>
                                 <label class="form-check-label d-block" for="modalIncludeContact">
                                     <span class="d-block fw-semibold small">Incluir información de contacto</span>
-                                    <span class="extra-small text-muted">Teléfono, email y dirección completa</span>
+                                    <span class="extra-small text-muted">Teléfono y dirección completa</span>
                                 </label>
                             </div>
 
@@ -489,6 +527,7 @@
     function initializeEvents() {
         const searchInput = document.querySelector('input[name="busqueda"]');
         const perPageSelect = document.getElementById('per_page');
+        const sortButtons = document.querySelectorAll('.sort-btn');
 
         if (searchInput) {
             searchInput.focus();
@@ -504,6 +543,24 @@
         if (perPageSelect) {
             perPageSelect.addEventListener('change', () => fetchClientes());
         }
+
+        sortButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const column = this.dataset.column;
+                const currentUrl = new URL(window.location.href);
+                let direction = 'asc';
+
+                if (currentUrl.searchParams.get('sort') === column) {
+                    direction = currentUrl.searchParams.get('direction') === 'asc' ? 'desc' : 'asc';
+                }
+
+                const params = new URLSearchParams(window.location.search);
+                params.set('sort', column);
+                params.set('direction', direction);
+
+                fetchClientes(`{{ route('clientes.index') }}?${params.toString()}`);
+            });
+        });
     }
 
     // AJAX para refrescar la tabla

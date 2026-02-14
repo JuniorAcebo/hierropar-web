@@ -161,11 +161,15 @@
                                 <select name="almacen_id" id="almacen_id" class="form-select" required>
                                     <option value="">Seleccione un Almacen...</option>
                                     @foreach($almacenes as $alm)
-                                        <option value="{{ $alm->id }}" {{ old('almacen_id') == $alm->id ? 'selected' : '' }}>
-                                            {{ $alm->nombre }} (Stock actual: {{ $producto->inventarios->where('almacen_id', $alm->id)->first()->stock ?? 0 }})
+                                        @php
+                                            $stockActual = $producto->inventarios->where('almacen_id', $alm->id)->first()->stock ?? 0;
+                                        @endphp
+                                        <option value="{{ $alm->id }}" data-stock="{{ $stockActual }}" {{ old('almacen_id') == $alm->id ? 'selected' : '' }}>
+                                            {{ $alm->nombre }} (Stock actual: {{ $stockActual }})
                                         </option>
                                     @endforeach
                                 </select>
+                                <small id="stockActualText" class="text-muted d-block mt-1">Stock actual: --</small>
                                 @error('almacen_id')
                                     <small class="text-danger">{{ $message }}</small>
                                 @enderror
@@ -202,7 +206,7 @@
                             </div>
 
                             <div class="d-flex justify-content-end gap-2 mt-4">
-                                <a href="{{ route('productos.index') }}" class="btn btn-outline-secondary btn-sm">
+                                <a href="{{ route('productos.historialAjustes') }}" class="btn btn-outline-secondary btn-sm">
                                     Volver
                                 </a>
                                 <button type="submit" class="btn btn-primary-clean btn-sm">
@@ -225,9 +229,43 @@
             helpText.className = 'text-muted mt-2 d-block';
             helpText.id = 'helpText';
 
+            const almacenSelect = document.getElementById('almacen_id');
+            const stockActualText = document.getElementById('stockActualText');
             const cantidadInput = document.querySelector('input[name="cantidad"]');
+            const submitBtn = document.querySelector('button[type="submit"]');
+
+            let stockActual = 0;
             if (cantidadInput && cantidadInput.parentElement) {
                 cantidadInput.parentElement.appendChild(helpText);
+            }
+
+            function readStockActual() {
+                if (!almacenSelect || !stockActualText) return;
+                if (!almacenSelect.value) {
+                    stockActual = null;
+                    stockActualText.textContent = 'Stock actual: --';
+                    return;
+                }
+                const opt = almacenSelect.options[almacenSelect.selectedIndex];
+                stockActual = parseFloat(opt?.dataset?.stock ?? '0') || 0;
+                stockActualText.textContent = `Stock actual: ${stockActual}`;
+            }
+
+            function validateCantidad() {
+                if (!cantidadInput || !tipo) return;
+                const qty = parseFloat(cantidadInput.value) || 0;
+
+                if (tipo.value === 'restar' && stockActual !== null) {
+                    if (qty > stockActual) {
+                        cantidadInput.setCustomValidity(`No se puede restar ${qty}. Stock disponible: ${stockActual}.`);
+                    } else {
+                        cantidadInput.setCustomValidity('');
+                    }
+                } else {
+                    cantidadInput.setCustomValidity('');
+                }
+
+                if (submitBtn) submitBtn.disabled = !!cantidadInput.validationMessage;
             }
 
             function updateHelp() {
@@ -245,6 +283,21 @@
                 tipo.addEventListener('change', updateHelp);
                 updateHelp();
             }
+
+            if (almacenSelect) {
+                almacenSelect.addEventListener('change', function() {
+                    readStockActual();
+                    validateCantidad();
+                    updateHelp();
+                });
+            }
+
+            if (cantidadInput) {
+                cantidadInput.addEventListener('input', validateCantidad);
+            }
+
+            readStockActual();
+            validateCantidad();
         });
     </script>
 @endpush

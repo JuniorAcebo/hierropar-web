@@ -13,13 +13,15 @@ class ProductosExport implements FromCollection, WithHeadings, WithMapping
     protected $includePrices;
     protected $includeStock;
     protected $includeAllDetails;
+    protected $almacenes;
 
-    public function __construct($productos, $includePrices = true, $includeStock = true, $includeAllDetails = true)
+    public function __construct($productos, $includePrices = true, $includeStock = true, $includeAllDetails = true, $almacenes = [])
     {
         $this->productos = $productos;
         $this->includePrices = $includePrices;
         $this->includeStock = $includeStock;
         $this->includeAllDetails = $includeAllDetails;
+        $this->almacenes = $almacenes ?: [];
     }
 
     public function collection()
@@ -38,6 +40,8 @@ class ProductosExport implements FromCollection, WithHeadings, WithMapping
         if ($this->includeAllDetails) {
             $headers[] = 'Categoría';
             $headers[] = 'Marca';
+            $headers[] = 'Unidad';
+            $headers[] = 'Descripcion';
         }
 
         if ($this->includePrices) {
@@ -47,6 +51,10 @@ class ProductosExport implements FromCollection, WithHeadings, WithMapping
 
         if ($this->includeStock) {
             $headers[] = 'Stock Total';
+
+            foreach ($this->almacenes as $almacen) {
+                $headers[] = 'Stock - ' . ($almacen->nombre ?? ('Almacen ' . $almacen->id));
+            }
         }
 
         $headers[] = 'Estado';
@@ -65,6 +73,8 @@ class ProductosExport implements FromCollection, WithHeadings, WithMapping
         if ($this->includeAllDetails) {
             $row[] = $producto->categoria ? $producto->categoria->nombre : 'N/A';
             $row[] = $producto->marca ? $producto->marca->nombre : 'N/A';
+            $row[] = $producto->tipounidad ? $producto->tipounidad->nombre : 'N/A';
+            $row[] = $producto->descripcion ?? '';
         }
 
         if ($this->includePrices) {
@@ -74,6 +84,14 @@ class ProductosExport implements FromCollection, WithHeadings, WithMapping
 
         if ($this->includeStock) {
             $row[] = $producto->stock_total ?? 0;
+
+            $inventarios = $producto->inventarios ?? collect();
+            $invByAlmacen = method_exists($inventarios, 'keyBy') ? $inventarios->keyBy('almacen_id') : [];
+
+            foreach ($this->almacenes as $almacen) {
+                $inv = $invByAlmacen[$almacen->id] ?? null;
+                $row[] = $inv ? ($inv->stock ?? 0) : 0;
+            }
         }
 
         $row[] = $producto->estado ? 'Activo' : 'Inactivo';

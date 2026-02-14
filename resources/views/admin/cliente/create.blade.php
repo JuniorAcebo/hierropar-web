@@ -189,6 +189,21 @@
                     @enderror
                 </div>
 
+                <div class="col-md-6">
+                    <label for="grupo_cliente_id" class="form-label">Grupo de cliente:</label>
+                    <select class="form-select" name="grupo_cliente_id" id="grupo_cliente_id" required>
+                        <option value="" selected disabled>Seleccione un grupo</option>
+                        @foreach ($grupos as $grupo)
+                            <option value="{{ $grupo->id }}" {{ old('grupo_cliente_id') == $grupo->id ? 'selected' : '' }}>
+                                {{ $grupo->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('grupo_cliente_id')
+                        <small class="text-danger">{{ $message }}</small>
+                    @enderror
+                </div>
+
                 <!-------Razón social------->
                 <div class="col-12" id="box-razon-social">
                     <label id="label-natural" for="razon_social" class="form-label">Nombres y apellidos:</label>

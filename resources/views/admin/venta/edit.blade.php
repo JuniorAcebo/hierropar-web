@@ -213,8 +213,48 @@
             let itemsAgregados = new Set();
             let selectedItem = null;
             let rowCount = 0;
+            let previousAlmacenId = $('#almacen_id').val();
+            let stockRequestSeq = 0;
+            let suppressAlmacenChange = false;
 
             $('.selectpicker').selectpicker();
+
+            function setStockBadge(stock, ilimitado) {
+                const badge = $('#sel_stock_badge');
+                badge.removeClass('stock-ok stock-low stock-out');
+
+                if (ilimitado) {
+                    badge.text('Stock: Ilimitado');
+                    badge.addClass('stock-ok');
+                    return;
+                }
+
+                const stockNum = parseFloat(stock) || 0;
+                badge.text(`Stock: ${stockNum}`);
+                if (stockNum <= 0) badge.addClass('stock-out');
+                else if (stockNum < 10) badge.addClass('stock-low');
+                else badge.addClass('stock-ok');
+            }
+
+            async function fetchStock(productoId, almacenId) {
+                const mySeq = ++stockRequestSeq;
+                const res = await $.ajax({
+                    url: '{{ route("ventas.check-stock") }}',
+                    method: 'GET',
+                    data: { producto_id: productoId, almacen_id: almacenId }
+                });
+                return { res, mySeq };
+            }
+
+            function resetVentaItems() {
+                $('#tabla_detalle tbody').empty();
+                itemsAgregados.clear();
+                rowCount = 0;
+                updateTotals();
+                $('#selection_card').hide();
+                selectedItem = null;
+                $('#producto_search').val('');
+            }
 
             // --- LOAD DATA ---
             EXISTENTES.forEach(det => {
@@ -260,29 +300,77 @@
                 
                 Swal.showLoading();
                 try {
-                    const res = await $.ajax({
-                        url: '{{ route("ventas.check-stock") }}',
-                        method: 'GET',
-                        data: { producto_id: p.id, almacen_id: storageId }
-                    });
+                    const { res, mySeq } = await fetchStock(p.id, storageId);
                     Swal.close();
+                    if (mySeq !== stockRequestSeq) return;
                     if (res.success) {
-                        selectedItem = { ...p, stock: parseFloat(res.stock) };
+                        const ilimitado = !!res.ilimitado;
+                        const stockValue = ilimitado ? Number.POSITIVE_INFINITY : parseFloat(res.stock);
+                        selectedItem = { ...p, stock: stockValue, ilimitado };
                         $('#sel_name').text(p.nombre);
                         $('#sel_codigo').val(p.codigo);
                         $('#sel_precio').val(parseFloat(p.precio_venta).toFixed(2));
                         $('#sel_cantidad').val('1.000').focus();
                         
-                        const badge = $('#sel_stock_badge').text(`Stock: ${selectedItem.stock}`);
-                        badge.removeClass('stock-ok stock-low stock-out');
-                        if (selectedItem.stock <= 0) badge.addClass('stock-out');
-                        else if (selectedItem.stock < 10) badge.addClass('stock-low');
-                        else badge.addClass('stock-ok');
+                        setStockBadge(res.stock, ilimitado);
 
                         $('#selection_card').slideDown();
                     }
                 } catch (e) { Swal.fire("Error", "Error al consultar stock", "error"); }
             }
+
+            async function refreshSelectedStockForAlmacen(almacenId) {
+                if (!selectedItem) return;
+                if (!$('#selection_card').is(':visible')) return;
+
+                try {
+                    Swal.showLoading();
+                    const { res, mySeq } = await fetchStock(selectedItem.id, almacenId);
+                    Swal.close();
+                    if (mySeq !== stockRequestSeq) return;
+                    if (!res.success) {
+                        Swal.fire("Error", "Error al consultar stock", "error");
+                        return;
+                    }
+
+                    const ilimitado = !!res.ilimitado;
+                    selectedItem.stock = ilimitado ? Number.POSITIVE_INFINITY : parseFloat(res.stock);
+                    selectedItem.ilimitado = ilimitado;
+                    setStockBadge(res.stock, ilimitado);
+                } catch (err) {
+                    Swal.fire("Error", "Error al consultar stock", "error");
+                }
+            }
+
+            $('#almacen_id').on('changed.bs.select', async function() {
+                if (suppressAlmacenChange) return;
+                const newAlmacenId = $(this).val();
+                const hasItems = $('#tabla_detalle tbody tr').length > 0;
+
+                if (hasItems) {
+                    const result = await Swal.fire({
+                        title: 'Cambiar sucursal',
+                        text: 'Al cambiar la sucursal se borrarán los items agregados para evitar inconsistencias de stock. ¿Desea continuar?',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Sí, cambiar',
+                        cancelButtonText: 'No'
+                    });
+
+                    if (!result.isConfirmed) {
+                        suppressAlmacenChange = true;
+                        $('#almacen_id').selectpicker('val', previousAlmacenId);
+                        suppressAlmacenChange = false;
+                        return;
+                    }
+
+                    resetVentaItems();
+                }
+
+                previousAlmacenId = newAlmacenId;
+                await refreshSelectedStockForAlmacen(newAlmacenId);
+            });
 
             // --- TABLE LOGIC ---
             $('#btn_add_item').on('click', function() {
@@ -291,7 +379,11 @@
                 const price = parseFloat($('#sel_precio').val()) || 0;
 
                 if (qty <= 0) { Swal.fire("Error", "Ingrese una cantidad valida", "warning"); return; }
-                if (qty > selectedItem.stock) { Swal.fire("Error", "Stock insuficiente", "error"); return; }
+                if (qty > selectedItem.stock) {
+                    const msg = selectedItem.ilimitado ? 'Stock ilimitado' : 'Stock insuficiente';
+                    Swal.fire("Error", msg, "error");
+                    return;
+                }
 
                 addItem(selectedItem, qty, price, 0);
                 $('#selection_card').hide();

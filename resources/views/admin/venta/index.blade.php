@@ -179,7 +179,7 @@
                                             </div>
                                             <div>
                                                 <div class="fw-semibold">{{ $venta->comprobante->tipo_comprobante }}</div>
-                                                <span class="info-subtext">NÂ°: {{ $venta->numero_comprobante }}</span>
+                                                <span class="info-subtext">Nro: {{ $venta->numero_comprobante }}</span>
                                             </div>
                                         </div>
                                     </td>

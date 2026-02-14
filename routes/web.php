@@ -113,6 +113,9 @@ Route::prefix('admin')->group(function () {
             'parameters' => ['almacenes' => 'almacen']
         ]);
 
+        // --- Estado de cliente (activar/desactivar) ---
+        Route::patch('clientes/{persona}/estado', [ClienteController::class, 'changeState'])->name('clientes.changeState');
+
         Route::resource('tipounidades', TipoUnidadController::class)->parameters(['tipounidades' => 'tipounidad']);
     });
 

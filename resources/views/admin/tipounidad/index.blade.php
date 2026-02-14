@@ -35,7 +35,7 @@
     <div class="card-clean">
         <div class="card-header-clean">
             <div class="card-header-title">
-                <i class="fas fa-list"></i> Tabla de tipos de unidades
+                <i class="fas fa-ruler-combined"></i> Tabla de tipos de unidades
             </div>
         </div>
         <div class="card-body p-0">
