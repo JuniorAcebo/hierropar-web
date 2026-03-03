@@ -10,10 +10,18 @@ class Venta extends Model
     use HasFactory;
     protected $table = 'ventas';
 
+    protected $casts = [
+        'total' => 'decimal:2',
+        'monto_pagado' => 'decimal:2',
+        'fecha_hora' => 'datetime',
+    ];
+
     protected $fillable = [
         'fecha_hora', 
         'numero_comprobante', 
         'total', 
+        'metodo_pago',
+        'monto_pagado',
         'estado_pago', 
         'estado_entrega', 
         'estado', 
@@ -49,5 +57,12 @@ class Venta extends Model
     public function detalles()
     {
         return $this->hasMany(DetalleVenta::class, 'venta_id');
+    }
+
+    public function getSaldoAttribute(): float
+    {
+        $total = (float) ($this->total ?? 0);
+        $pagado = (float) ($this->monto_pagado ?? 0);
+        return max(0.0, $total - $pagado);
     }
 }

@@ -19,6 +19,8 @@ class UpdateCompraRequest extends FormRequest
         return [
             'numero_comprobante' => 'nullable|string|max:255|unique:compras,numero_comprobante,' . $compraId,
             'total' => 'required|numeric|min:0.01',
+            'metodo_pago' => 'nullable|in:efectivo,debito,qr,deposito',
+            'monto_pagado' => 'nullable|numeric|min:0|max:999999999',
             'proveedor_id' => 'required|exists:proveedores,id',
             'comprobante_id' => 'required|exists:comprobantes,id',
             'almacen_id' => 'required|exists:almacenes,id',
@@ -74,7 +76,8 @@ class UpdateCompraRequest extends FormRequest
             'arraycantidad' => $cantidades,
             'arraypreciocompra' => $preciosCompra,
             'arrayprecioventa' => $preciosVenta,
-            'total' => floatval($this->total ?? 0)
+            'total' => floatval($this->total ?? 0),
+            'monto_pagado' => floatval($this->monto_pagado ?? 0),
         ]);
     }
 

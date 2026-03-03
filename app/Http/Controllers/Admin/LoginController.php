@@ -18,7 +18,7 @@ class LoginController extends Controller
 
         return view('admin.auth.login');
     }
-
+// comando para refrescar la base de datos php artisan migrate:refresh --seed
     public function login(LoginRequest $request)
     {
         // Validar credenciales
@@ -30,7 +30,7 @@ class LoginController extends Controller
         $user = Auth::getProvider()->retrieveByCredentials($request->only('email', 'password'));
         Auth::login($user);
 
-        
+
 
         // Para otros usuarios, redirigir al panel normal
         return redirect()->route('panel')->with('success', 'Bienvenido ' . $user->name);

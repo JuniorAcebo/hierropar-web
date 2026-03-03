@@ -10,7 +10,28 @@ class Compra extends Model
     use HasFactory;
     protected $table = 'compras';
 
-    protected $fillable = ['fecha_hora', 'numero_comprobante', 'total', 'costo_transporte', 'nota_personal', 'estado_pago', 'estado_entrega', 'estado', 'comprobante_id', 'proveedor_id', 'almacen_id', 'user_id'];
+    protected $casts = [
+        'total' => 'decimal:2',
+        'monto_pagado' => 'decimal:2',
+        'fecha_hora' => 'datetime',
+    ];
+
+    protected $fillable = [
+        'fecha_hora',
+        'numero_comprobante',
+        'total',
+        'metodo_pago',
+        'monto_pagado',
+        'costo_transporte',
+        'nota_personal',
+        'estado_pago',
+        'estado_entrega',
+        'estado',
+        'comprobante_id',
+        'proveedor_id',
+        'almacen_id',
+        'user_id'
+    ];
 
     public function user()
     {
@@ -37,4 +58,10 @@ class Compra extends Model
         return $this->belongsTo(Almacen::class, 'almacen_id');
     }
 
+    public function getSaldoAttribute(): float
+    {
+        $total = (float) ($this->total ?? 0);
+        $pagado = (float) ($this->monto_pagado ?? 0);
+        return max(0.0, $total - $pagado);
+    }
 }

@@ -97,6 +97,32 @@
                             </a>
                         </div>
                     </div>
+
+                    <div class="row g-3 align-items-end mt-1">
+                        <div class="col-md-3">
+                            <label class="text-muted small d-block mb-1">Metodo</label>
+                            <select name="metodo_pago" class="form-select form-select-sm" style="border-radius: 6px;">
+                                <option value="">Todos</option>
+                                <option value="efectivo" {{ ($metodoPago ?? '') === 'efectivo' ? 'selected' : '' }}>Efectivo</option>
+                                <option value="debito" {{ ($metodoPago ?? '') === 'debito' ? 'selected' : '' }}>Débito</option>
+                                <option value="qr" {{ ($metodoPago ?? '') === 'qr' ? 'selected' : '' }}>QR</option>
+                                <option value="deposito" {{ ($metodoPago ?? '') === 'deposito' ? 'selected' : '' }}>Depósito</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-muted small d-block mb-1">Desde</label>
+                            <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $dateFrom ?? '' }}" style="border-radius: 6px;">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-muted small d-block mb-1">Hasta</label>
+                            <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo ?? '' }}" style="border-radius: 6px;">
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <button type="submit" class="btn btn-primary btn-sm" style="border-radius: 6px;">
+                                <i class="fas fa-filter me-1"></i> Filtrar
+                            </button>
+                        </div>
+                    </div>
                 </form>
             </div>
 
@@ -151,6 +177,8 @@
                                         Total <i class="fas fa-sort sort-icon"></i>
                                     </button>
                                 </th>
+                                <th class="text-center">Método</th>
+                                <th class="text-center">Pagado / Saldo</th>
                                 <th class="text-center">
                                     <button class="sort-btn {{ $sort == 'estado_pago' ? 'active ' . $direction : '' }}"
                                             data-column="estado_pago">
@@ -208,16 +236,38 @@
                                         <span class="fw-bold text-success">${{ number_format($venta->total, 2) }}</span>
                                     </td>
                                     <td class="text-center">
+                                        @php
+                                            $metodo = $venta->metodo_pago ?? 'efectivo';
+                                            $metodoLabel = match ($metodo) {
+                                                'debito' => 'DÃ©bito',
+                                                'qr' => 'QR',
+                                                'deposito' => 'DepÃ³sito',
+                                                default => 'Efectivo',
+                                            };
+                                        @endphp
+                                        <span class="badge bg-light text-dark border">{{ $metodoLabel }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="fw-semibold">Bs. {{ number_format((float)($venta->monto_pagado ?? 0), 2) }}</div>
+                                        <div class="info-subtext">Debe: Bs. {{ number_format((float)($venta->saldo ?? 0), 2) }}</div>
+                                    </td>
+                                    <td class="text-center">
                                         <div class="dropdown custom-dropdown">
                                             @php
-                                                $statusClass = (in_array($venta->estado_pago, ['pendiente', '0', 0])) ? 'badge-danger' : 'badge-success';
-                                                $statusText = (in_array($venta->estado_pago, ['pendiente', '0', 0])) ? 'Pendiente' : 'Pagado';
+                                                $estadoPago = $venta->estado_pago;
+                                                $statusClass = (in_array($estadoPago, ['pendiente', '0', 0])) ? 'badge-danger' :
+                                                              ($estadoPago === 'parcial' ? 'badge-warning' :
+                                                              (in_array($estadoPago, ['cancelado', 'anulado']) ? 'badge-secondary' : 'badge-success'));
+                                                $statusText = (in_array($estadoPago, ['pendiente', '0', 0])) ? 'Pendiente' :
+                                                             ($estadoPago === 'parcial' ? 'Parcial' :
+                                                             (in_array($estadoPago, ['cancelado', 'anulado']) ? ucfirst($estadoPago) : 'Pagado'));
                                             @endphp
                                             <button class="status-btn badge-pill {{ $statusClass }} dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                                 {{ $statusText }}
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
                                                 <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pagado">Pagado</a></li>
+                                                <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="parcial">Parcial...</a></li>
                                                 <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pendiente">Pendiente</a></li>
                                             </ul>
                                         </div>
@@ -794,9 +844,22 @@
         });
     }
 
-    function updateSaleStatus(ventaId, type, status) {
+    async function updateSaleStatus(ventaId, type, status) {
         const url = type === 'pago' ? `${ventasBaseUrl}/${ventaId}/estado-pago` : `${ventasBaseUrl}/${ventaId}/estado-entrega`;
-        const data = type === 'pago' ? { estado_pago: status } : { estado_entrega: status };
+        let data = type === 'pago' ? { estado_pago: status } : { estado_entrega: status };
+
+        if (type === 'pago' && status === 'parcial') {
+            const { value } = await Swal.fire({
+                title: 'Pago parcial',
+                input: 'number',
+                inputLabel: 'Monto pagado (Bs.)',
+                inputAttributes: { min: 0, step: 0.01 },
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+            });
+            if (value === undefined) return;
+            data.monto_pagado = parseFloat(value || 0);
+        }
 
         Swal.fire({
             title: 'Actualizando estado...',

@@ -35,6 +35,9 @@ class VentaController extends Controller
     public function index(Request $request)
     {
         $busqueda = $request->get('busqueda');
+        $metodoPago = $request->get('metodo_pago');
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
         $perPage  = $request->get('per_page', 10);
         $sort     = $request->get('sort', 'fecha_hora');
         $direction = $request->get('direction', 'desc');
@@ -63,6 +66,16 @@ class VentaController extends Controller
             });
         }
 
+        if ($metodoPago) {
+            $query->where('metodo_pago', $metodoPago);
+        }
+        if ($dateFrom) {
+            $query->whereDate('fecha_hora', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('fecha_hora', '<=', $dateTo);
+        }
+
         // Ordenamiento
         switch ($sort) {
             case 'cliente':
@@ -88,6 +101,9 @@ class VentaController extends Controller
         // Estadísticas para el footer - Filtradas por almacen
         $statsQuery = Venta::where('estado', 1);
         $statsQuery = $this->filterByUserAlmacen($statsQuery);
+        if ($metodoPago) $statsQuery->where('metodo_pago', $metodoPago);
+        if ($dateFrom) $statsQuery->whereDate('fecha_hora', '>=', $dateFrom);
+        if ($dateTo) $statsQuery->whereDate('fecha_hora', '<=', $dateTo);
 
         $totalVentasMonto = (clone $statsQuery)->sum('total');
         $ventasPagadas = (clone $statsQuery)
@@ -105,6 +121,9 @@ class VentaController extends Controller
             return view('admin.venta.index', compact(
                 'ventas',
                 'busqueda',
+                'metodoPago',
+                'dateFrom',
+                'dateTo',
                 'perPage',
                 'sort',
                 'direction',
@@ -117,6 +136,9 @@ class VentaController extends Controller
         return view('admin.venta.index', compact(
             'ventas',
             'busqueda',
+            'metodoPago',
+            'dateFrom',
+            'dateTo',
             'perPage',
             'sort',
             'direction',
@@ -246,6 +268,8 @@ class VentaController extends Controller
                 'fecha_hora' => $request->fecha_hora ?? now(),
                 'numero_comprobante' => $numeroComprobante,
                 'total' => 0,
+                'metodo_pago' => $request->input('metodo_pago', 'efectivo'),
+                'monto_pagado' => 0,
                 'estado_pago' => 'pendiente',
                 'estado_entrega' => 'por_entregar',
                 'cliente_id' => $request->cliente_id,
@@ -276,7 +300,18 @@ class VentaController extends Controller
                 $total += ($cantidad * $precioVenta) - $descuento;
             }
 
-            $venta->update(['total' => $total]);
+            $montoPagado = (float) $request->input('monto_pagado', 0);
+            if ($request->input('estado_pago') === 'pagado') {
+                $montoPagado = $total;
+            }
+            $montoPagado = max(0.0, min($montoPagado, (float) $total));
+            $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
+
+            $venta->update([
+                'total' => $total,
+                'monto_pagado' => $montoPagado,
+                'estado_pago' => $estadoPago,
+            ]);
 
             // Procesar salida de stock
             $this->ventaService->procesarSalidaStock($venta);
@@ -408,6 +443,21 @@ class VentaController extends Controller
             }
             $venta->update(['total' => $total]);
 
+            $montoPagado = (float) $request->input('monto_pagado', $venta->monto_pagado ?? 0);
+            if ($request->input('estado_pago') === 'pagado') {
+                $montoPagado = $total;
+            } elseif ($request->input('estado_pago') === 'pendiente') {
+                $montoPagado = 0;
+            }
+            $montoPagado = max(0.0, min($montoPagado, (float) $total));
+            $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
+
+            $venta->update([
+                'metodo_pago' => $request->input('metodo_pago', $venta->metodo_pago ?? 'efectivo'),
+                'monto_pagado' => $montoPagado,
+                'estado_pago' => $estadoPago,
+            ]);
+
             // 6. Salida stock nuevamente (asegurarse de usar detalles recién creados)
             $venta->refresh();
             $this->ventaService->procesarSalidaStock($venta);
@@ -476,7 +526,24 @@ class VentaController extends Controller
                 $this->ventaService->procesarSalidaStock($venta);
             }
 
-            $venta->update(['estado_pago' => $estadoNuevo]);
+            $updates = ['estado_pago' => $estadoNuevo];
+
+            if ($request->filled('metodo_pago')) {
+                $updates['metodo_pago'] = $request->input('metodo_pago');
+            }
+
+            if (in_array($estadoNuevo, ['cancelado', 'anulado'])) {
+                $updates['monto_pagado'] = 0;
+            } elseif ($estadoNuevo === 'pagado') {
+                $updates['monto_pagado'] = (float) $venta->total;
+            } elseif ($estadoNuevo === 'pendiente') {
+                $updates['monto_pagado'] = 0;
+            } elseif ($estadoNuevo === 'parcial') {
+                $montoPagado = (float) $request->input('monto_pagado', $venta->monto_pagado ?? 0);
+                $updates['monto_pagado'] = max(0.0, min($montoPagado, (float) $venta->total));
+            }
+
+            $venta->update($updates);
 
             DB::commit();
 

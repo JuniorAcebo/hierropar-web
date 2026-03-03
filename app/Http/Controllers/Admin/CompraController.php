@@ -59,6 +59,9 @@ class CompraController extends Controller
     public function index(Request $request)
     {
         $busqueda = $request->get('busqueda');
+        $metodoPago = $request->get('metodo_pago');
+        $dateFrom = $request->get('date_from');
+        $dateTo = $request->get('date_to');
         $perPage  = $request->get('per_page', 10);
         $sort     = $request->get('sort', 'fecha_hora'); // Por defecto fecha más reciente
         $direction = $request->get('direction', 'desc'); // Descendente por defecto
@@ -85,6 +88,16 @@ class CompraController extends Controller
                         $cq->where('tipo_comprobante', 'like', "%{$busqueda}%");
                     });
             });
+        }
+
+        if ($metodoPago) {
+            $query->where('metodo_pago', $metodoPago);
+        }
+        if ($dateFrom) {
+            $query->whereDate('fecha_hora', '>=', $dateFrom);
+        }
+        if ($dateTo) {
+            $query->whereDate('fecha_hora', '<=', $dateTo);
         }
 
         // Ordenamiento
@@ -114,6 +127,9 @@ class CompraController extends Controller
         // Estadísticas para el footer - Filtradas por almacén
         $statsQuery = Compra::where('estado', 1);
         $statsQuery = $this->filterByUserAlmacen($statsQuery);
+        if ($metodoPago) $statsQuery->where('metodo_pago', $metodoPago);
+        if ($dateFrom) $statsQuery->whereDate('fecha_hora', '>=', $dateFrom);
+        if ($dateTo) $statsQuery->whereDate('fecha_hora', '<=', $dateTo);
 
         $totalComprasMonto = (clone $statsQuery)->sum('total');
         $totalComprasCount = (clone $statsQuery)->count();
@@ -125,6 +141,9 @@ class CompraController extends Controller
             return view('admin.compra.index', compact(
                 'compras',
                 'busqueda',
+                'metodoPago',
+                'dateFrom',
+                'dateTo',
                 'perPage',
                 'sort',
                 'direction',
@@ -137,6 +156,9 @@ class CompraController extends Controller
         return view('admin.compra.index', compact(
             'compras',
             'busqueda',
+            'metodoPago',
+            'dateFrom',
+            'dateTo',
             'perPage',
             'sort',
             'direction',
@@ -190,6 +212,8 @@ class CompraController extends Controller
                 'fecha_hora' => now(),
                 'numero_comprobante' => $numeroComprobante,
                 'total' => 0, // Se calculará abajo
+                'metodo_pago' => $request->input('metodo_pago', 'efectivo'),
+                'monto_pagado' => 0,
                 'costo_transporte' => $request->costo_transporte ?? 0,
                 'nota_personal' => $request->nota_personal,
                 'estado_pago' => $request->estado_pago ?? 'pendiente',
@@ -216,7 +240,18 @@ class CompraController extends Controller
                 $total += ($cantidad * $precioCompra);
             }
 
-            $compra->update(['total' => $total]);
+            $montoPagado = (float) $request->input('monto_pagado', 0);
+            if ($request->input('estado_pago') === 'pagado') {
+                $montoPagado = $total;
+            }
+            $montoPagado = max(0.0, min($montoPagado, (float) $total));
+            $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
+
+            $compra->update([
+                'total' => $total,
+                'monto_pagado' => $montoPagado,
+                'estado_pago' => $estadoPago,
+            ]);
 
             // Procesar stock
             $this->compraService->procesarEntradaStock($compra);
@@ -332,6 +367,7 @@ class CompraController extends Controller
                 'fecha_hora' => $request->fecha_hora ?? $compra->fecha_hora,
                 'numero_comprobante' => $request->numero_comprobante ?? $compra->numero_comprobante,
                 'total' => 0,
+                'metodo_pago' => $request->input('metodo_pago', $compra->metodo_pago ?? 'efectivo'),
                 'costo_transporte' => $request->costo_transporte ?? 0,
                 'nota_personal' => $request->nota_personal,
                 'estado_pago' => $request->estado_pago ?? $compra->estado_pago,
@@ -365,7 +401,20 @@ class CompraController extends Controller
                 $total += ($cantidad * $precioCompra);
             }
 
-            $compra->update(['total' => $total]);
+            $montoPagado = (float) $request->input('monto_pagado', $compra->monto_pagado ?? 0);
+            if ($request->input('estado_pago') === 'pagado') {
+                $montoPagado = $total;
+            } elseif ($request->input('estado_pago') === 'pendiente') {
+                $montoPagado = 0;
+            }
+            $montoPagado = max(0.0, min($montoPagado, (float) $total));
+            $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
+
+            $compra->update([
+                'total' => $total,
+                'monto_pagado' => $montoPagado,
+                'estado_pago' => $estadoPago,
+            ]);
 
             // 6. Procesar entrada de stock nuevo
             // IMPORTANTE: Recargar la relación detalles porque tiene en caché los viejos (que ya se borraron)
@@ -432,7 +481,24 @@ class CompraController extends Controller
                 $this->compraService->procesarEntradaStock($compra);
             }
 
-            $compra->update(['estado_pago' => $estadoNuevo]);
+            $updates = ['estado_pago' => $estadoNuevo];
+
+            if ($request->filled('metodo_pago')) {
+                $updates['metodo_pago'] = $request->input('metodo_pago');
+            }
+
+            if (in_array($estadoNuevo, ['cancelado', 'anulado'])) {
+                $updates['monto_pagado'] = 0;
+            } elseif ($estadoNuevo === 'pagado') {
+                $updates['monto_pagado'] = (float) $compra->total;
+            } elseif ($estadoNuevo === 'pendiente') {
+                $updates['monto_pagado'] = 0;
+            } elseif ($estadoNuevo === 'parcial') {
+                $montoPagado = (float) $request->input('monto_pagado', $compra->monto_pagado ?? 0);
+                $updates['monto_pagado'] = max(0.0, min($montoPagado, (float) $compra->total));
+            }
+
+            $compra->update($updates);
 
             DB::commit();
 

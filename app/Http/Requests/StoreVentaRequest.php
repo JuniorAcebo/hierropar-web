@@ -18,6 +18,8 @@ class StoreVentaRequest extends FormRequest
             'fecha_hora' => 'required|date|before_or_equal:now',
             'numero_comprobante' => 'nullable|string|max:255|unique:ventas,numero_comprobante',
             'total' => 'required|numeric|min:0.01',
+            'metodo_pago' => 'nullable|in:efectivo,debito,qr,deposito',
+            'monto_pagado' => 'nullable|numeric|min:0|max:999999999',
             'cliente_id' => 'required|exists:clientes,id',
             'user_id' => 'required|exists:users,id',
             'comprobante_id' => 'required|exists:comprobantes,id',
@@ -79,7 +81,8 @@ class StoreVentaRequest extends FormRequest
             'arraycantidad' => array_map(fn($v) => floatval($v ?? 0), $this->arraycantidad ?? []),
             'arrayprecioventa' => array_map(fn($v) => floatval($v ?? 0), $this->arrayprecioventa ?? []),
             'arraydescuento' => array_map(fn($v) => floatval($v ?? 0), $this->arraydescuento ?? []),
-            'total' => floatval($this->total ?? 0)
+            'total' => floatval($this->total ?? 0),
+            'monto_pagado' => floatval($this->monto_pagado ?? 0),
         ]);
     }
 

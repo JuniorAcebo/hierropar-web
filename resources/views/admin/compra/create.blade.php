@@ -25,12 +25,12 @@
         .section-title i { margin-right: 8px; color: #3498db; }
         .form-label { font-weight: 500; font-size: 13px; margin-bottom: 4px; color: #495057; }
         .form-control-sm { font-size: 13px; padding: 4px 8px; height: 32px; }
-        
+
         /* Search Component */
         .search-wrapper { position: relative; }
         .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 4; }
         #producto_search { padding-left: 35px; border-radius: 4px; }
-        
+
         .products-dropdown {
             position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #dee2e6;
             border-radius: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 350px; overflow-y: auto; display: none;
@@ -49,7 +49,7 @@
             background-color: #f8fbff; border: 1px solid #d1e3ff; border-radius: 6px; padding: 15px; margin-bottom: 15px; display: none;
         }
         .selection-title { font-size: 14px; font-weight: 700; color: #0056b3; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        
+
         .margen-badge { padding: 3px 6px; border-radius: 3px; font-size: 11px; font-weight: 700; }
         .margen-alto { background-color: #d4edda; color: #155724; }
         .margen-medio { background-color: #fff3cd; color: #856404; }
@@ -122,7 +122,7 @@
 
             <div class="border-section">
                 <div class="section-title"><i class="fas fa-boxes"></i> Detalles de la Compra</div>
-                
+
                 <div class="search-wrapper mb-3">
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="producto_search" class="form-control form-control-sm" placeholder="Buscar producto para añadir...">
@@ -185,6 +185,26 @@
                     </div>
                 </div>
 
+                <div class="row mt-3 g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Método de Pago:</label>
+                        <select name="metodo_pago" id="metodo_pago" class="form-control form-control-sm selectpicker" required>
+                            <option value="efectivo" selected>Efectivo</option>
+                            <option value="debito">DÉBITO</option>
+                            <option value="qr">QR</option>
+                            <option value="deposito">Depósito (Banco Fisco)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Monto Pagado (Bs.):</label>
+                        <input type="number" name="monto_pagado" id="monto_pagado" class="form-control form-control-sm" step="0.01" min="0" value="0.00">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Saldo/Deuda (Bs.):</label>
+                        <input type="text" id="saldo_label" class="form-control form-control-sm bg-white" readonly value="0.00">
+                    </div>
+                </div>
+
                 <div class="d-flex justify-content-end gap-2 mt-4">
                     <button id="btn_cancelar" type="button" class="btn btn-outline-danger btn-sm px-4" style="display:none;">Cancelar</button>
                     <button id="btn_guardar" type="submit" class="btn btn-primary btn-sm px-5 fw-bold" style="display:none;">Registrar Compra</button>
@@ -206,14 +226,26 @@
 
             $('.selectpicker').selectpicker();
 
+            function updatePagoFromTotal() {
+                const total = parseFloat($('#input_total').val()) || 0;
+                let pagado = parseFloat($('#monto_pagado').val());
+                if (isNaN(pagado)) pagado = total;
+                pagado = Math.max(0, Math.min(pagado, total));
+                const saldo = Math.max(0, total - pagado);
+                $('#monto_pagado').val(pagado.toFixed(2));
+                $('#saldo_label').val(saldo.toFixed(2));
+            }
+
+            $('#monto_pagado').on('input', updatePagoFromTotal);
+
             // --- SEARCH LOGIC ---
             $('#producto_search').on('input', function() {
                 const q = $(this).val().toLowerCase().trim();
                 const dropdown = $('#products_dropdown');
                 if (q.length < 1) { dropdown.hide(); return; }
-                
+
                 const matches = PRODUCTOS.filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)).slice(0, 10);
-                
+
                 dropdown.empty();
                 if (matches.length === 0) {
                     dropdown.append('<div class="p-3 text-muted small text-center">No encontrado</div>').show();
@@ -231,7 +263,7 @@
                             <div class="prod-price">Costo sugerido: Bs.${parseFloat(p.precio_compra).toFixed(2)}</div>
                         </div>
                     `);
-                    
+
                     if (!isAdded) item.on('click', () => {
                         selectedItem = p;
                         $('#sel_name').text(p.nombre);
@@ -290,7 +322,7 @@
                 let mClass = 'margen-bajo';
                 if (margen >= 30) mClass = 'margen-alto';
                 else if (margen >= 10) mClass = 'margen-medio';
-                
+
                 const row = `
                     <tr id="row_${rowCount}" data-id="${p.id}">
                         <td class="row-index">${rowCount}</td>
@@ -319,10 +351,10 @@
                 const q = parseFloat(tr.find('.t-qty').val()) || 0;
                 const c = parseFloat(tr.find('.t-cost').val()) || 0;
                 const v = parseFloat(tr.find('.t-sell').val()) || 0;
-                
+
                 const sub = (q * c).toFixed(2);
                 tr.find('.t-sub').text(sub);
-                
+
                 const marg = c > 0 ? ((v - c) / c * 100).toFixed(2) : 0;
                 const badge = tr.find('.t-margen').text(marg + '%');
                 badge.removeClass('margen-alto margen-medio margen-bajo');
@@ -351,6 +383,7 @@
                 $('.t-sub').each(function() { total += parseFloat($(this).text()) || 0; });
                 $('#label_total').text(total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
                 $('#input_total').val(total.toFixed(2));
+                updatePagoFromTotal();
             }
 
             function checkVisibility() {
@@ -358,7 +391,7 @@
                 if (count > 0) { $('#btn_guardar, #btn_cancelar').fadeIn(); }
                 else { $('#btn_guardar, #btn_cancelar').fadeOut(); }
             }
-            
+
             $('#btn_cancelar').on('click', function() {
                 Swal.fire({
                     title: 'Â¿Confirmar?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, limpiar'

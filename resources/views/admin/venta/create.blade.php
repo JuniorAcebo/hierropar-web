@@ -48,12 +48,12 @@
             padding: 8px;
             vertical-align: middle;
         }
-        
+
         /* Search Component */
         .search-wrapper { position: relative; }
         .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 4; }
         #producto_search { padding-left: 35px; border-radius: 4px; }
-        
+
         .products-dropdown {
             position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #dee2e6;
             border-radius: 4px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-height: 350px; overflow-y: auto; display: none;
@@ -72,7 +72,7 @@
             background-color: #f8fbff; border: 1px solid #d1e3ff; border-radius: 6px; padding: 15px; margin-bottom: 15px; display: none;
         }
         .selection-title { font-size: 14px; font-weight: 700; color: #0056b3; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-        
+
         .badge-stock { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
         .stock-ok { background-color: #d1ecf1; color: #0c5460; }
         .stock-low { background-color: #fff3cd; color: #856404; }
@@ -142,7 +142,7 @@
 
             <div class="border-section">
                 <div class="section-title"><i class="fas fa-shopping-cart"></i> Detalles de la Venta</div>
-                
+
                 <div class="search-wrapper mb-3">
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="producto_search" class="form-control form-control-sm" placeholder="Buscar por codigo o nombre del producto...">
@@ -200,6 +200,26 @@
                     </div>
                 </div>
 
+                <div class="row mt-3 g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Método de Pago:</label>
+                        <select name="metodo_pago" id="metodo_pago" class="form-control form-control-sm selectpicker" required>
+                            <option value="efectivo" selected>Efectivo</option>
+                            <option value="debito">Débito</option>
+                            <option value="qr">QR</option>
+                            <option value="deposito">Depósito (Banco Fisco)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Monto Pagado (Bs.):</label>
+                        <input type="number" name="monto_pagado" id="monto_pagado" class="form-control form-control-sm" step="0.01" min="0" value="0.00">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Saldo/Deuda (Bs.):</label>
+                        <input type="text" id="saldo_label" class="form-control form-control-sm bg-white" readonly value="0.00">
+                    </div>
+                </div>
+
                 <div class="row mt-3">
                     <div class="col-md-6">
                         <label class="form-label">Nota Interna:</label>
@@ -235,6 +255,18 @@
 
             $('.selectpicker').selectpicker();
 
+            function updatePagoFromTotal() {
+                const total = parseFloat($('#input_total').val()) || 0;
+                let pagado = parseFloat($('#monto_pagado').val());
+                if (isNaN(pagado)) pagado = total;
+                pagado = Math.max(0, Math.min(pagado, total));
+                const saldo = Math.max(0, total - pagado);
+                $('#monto_pagado').val(pagado.toFixed(2));
+                $('#saldo_label').val(saldo.toFixed(2));
+            }
+
+            $('#monto_pagado').on('input', updatePagoFromTotal);
+
             function setStockBadge(stock, ilimitado) {
                 const badge = $('#sel_stock_badge');
                 badge.removeClass('stock-ok stock-low stock-out');
@@ -262,6 +294,7 @@
                 return { res, mySeq };
             }
 
+
             function resetVentaItems() {
                 $('#tabla_detalle tbody').empty();
                 itemsAgregados.clear();
@@ -278,9 +311,9 @@
                 const q = $(this).val().toLowerCase().trim();
                 const dropdown = $('#products_dropdown');
                 if (q.length < 1) { dropdown.hide(); return; }
-                
+
                 const matches = PRODUCTOS.filter(p => p.nombre.toLowerCase().includes(q) || p.codigo.toLowerCase().includes(q)).slice(0, 10);
-                
+
                 dropdown.empty();
                 if (matches.length === 0) {
                     dropdown.append('<div class="p-3 text-muted small text-center">No se encontraron productos</div>').show();
@@ -298,7 +331,7 @@
                             <div class="prod-price">Bs. ${parseFloat(p.precio_venta).toFixed(2)}</div>
                         </div>
                     `);
-                    
+
                     if (!isAdded) {
                         item.on('click', () => selectProduct(p));
                     }
@@ -314,15 +347,15 @@
             async function selectProduct(p) {
                 $('#products_dropdown').hide();
                 $('#producto_search').val('');
-                
+
                 const storageId = $('#almacen_id').val();
-                
+
                 // Show loading state
                 Swal.showLoading();
-                
+
                 try {
                     const { res, mySeq } = await fetchStock(p.id, storageId);
-                    
+
                     Swal.close();
                     if (mySeq !== stockRequestSeq) return;
                     if (res.success) {
@@ -333,7 +366,7 @@
                         $('#sel_codigo').val(p.codigo);
                         $('#sel_precio').val(parseFloat(p.precio_venta).toFixed(2));
                         $('#sel_cantidad').val('1.000').focus();
-                        
+
                         setStockBadge(res.stock, ilimitado);
 
                         $('#selection_card').slideDown();
@@ -420,7 +453,7 @@
                 rowCount++;
                 itemsAgregados.add(p.id);
                 const sub = (qty * price).toFixed(2);
-                
+
                 const row = `
                     <tr id="row_${rowCount}" data-id="${p.id}">
                         <td class="row-index">${rowCount}</td>
@@ -471,6 +504,7 @@
                 $('.t-sub').each(function() { total += parseFloat($(this).text()) || 0; });
                 $('#label_total').text(total.toLocaleString('en-US', { minimumFractionDigits: 2 }));
                 $('#input_total').val(total.toFixed(2));
+                updatePagoFromTotal();
             }
 
             function checkVisibility() {
