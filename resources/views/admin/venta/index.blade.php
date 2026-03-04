@@ -287,8 +287,8 @@
                                         <div class="btn-action-group">
                                             @can('mostrar-venta')
                                                 <button type="button" class="btn-icon-soft view-venta"
-                                                        data-venta-id="{{ $venta->id }}" data-bs-toggle="modal"
-                                                        data-bs-target="#viewVentaModal" title="Ver Detalles">
+                                                        data-venta-id="{{ $venta->id }}"
+                                                        title="Ver Detalles">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
                                             @endcan
@@ -775,7 +775,7 @@
             const ventaId = button.dataset.ventaId;
 
             const modalElement = document.getElementById('viewVentaModal');
-            const modal = new bootstrap.Modal(modalElement);
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
             modal.show();
 
             loadVentaDetails(ventaId);

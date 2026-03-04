@@ -81,8 +81,11 @@
                         <label class="form-label">Cliente:</label>
                         <select name="cliente_id" id="cliente_id" class="form-control form-control-sm selectpicker show-tick" data-live-search="true" title="Seleccione cliente" required>
                             @foreach ($clientes as $item)
-                                <option value="{{ $item->id }}" {{ $venta->cliente_id == $item->id ? 'selected' : '' }}>
+                                <option value="{{ $item->id }}" {{ $venta->cliente_id == $item->id ? 'selected' : '' }} data-descuento="{{ $item->grupo->descuento_global ?? 0 }}">
                                     {{ $item->persona->razon_social }}
+                                    @if(isset($item->grupo) && $item->grupo->descuento_global > 0)
+                                        ({{ $item->grupo->nombre }}: {{ number_format($item->grupo->descuento_global, 2) }}%)
+                                    @endif
                                 </option>
                             @endforeach
                         </select>
@@ -236,6 +239,41 @@
             let previousAlmacenId = $('#almacen_id').val();
             let stockRequestSeq = 0;
             let suppressAlmacenChange = false;
+            let currentClienteDescuento = $('#cliente_id').find('option:selected').data('descuento') || 0;
+
+            $('#cliente_id').on('change', function() {
+                const selected = $(this).find('option:selected');
+                currentClienteDescuento = parseFloat(selected.data('descuento')) || 0;
+                
+                const hasItems = $('#tabla_detalle tbody tr').length > 0;
+                if (hasItems && currentClienteDescuento > 0) {
+                    Swal.fire({
+                        title: '¿Aplicar descuento?',
+                        text: `El cliente seleccionado tiene un descuento del ${currentClienteDescuento}%. ¿Desea aplicarlo a todos los productos?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, aplicar',
+                        cancelButtonText: 'No, mantener actuales'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            aplicarDescuentoGlobal(currentClienteDescuento);
+                        }
+                    });
+                }
+            });
+
+            function aplicarDescuentoGlobal(porcentaje) {
+                $('#tabla_detalle tbody tr').each(function() {
+                    const tr = $(this);
+                    const qty = parseFloat(tr.find('.t-qty').val()) || 0;
+                    const price = parseFloat(tr.find('.t-price').val()) || 0;
+                    const desc = (qty * price) * (porcentaje / 100);
+                    tr.find('.t-desc').val(desc.toFixed(2));
+                    const sub = ((qty * price) - desc).toFixed(2);
+                    tr.find('.t-sub').text(sub);
+                });
+                updateTotals();
+            }
 
             $('.selectpicker').selectpicker();
 
@@ -417,7 +455,10 @@
                     return;
                 }
 
-                addItem(selectedItem, qty, price, 0);
+                const subTotalBruto = qty * price;
+                const descCalculado = subTotalBruto * (currentClienteDescuento / 100);
+
+                addItem(selectedItem, qty, price, descCalculado);
                 $('#selection_card').hide();
                 selectedItem = null;
             });

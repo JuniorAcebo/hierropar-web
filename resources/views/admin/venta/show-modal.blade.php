@@ -67,18 +67,31 @@
         </div>
         
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="label-title">Cliente</div>
                 <div class="value-text">{{ $venta->cliente->persona->razon_social }}</div>
                 <small class="text-muted">{{ $venta->cliente->persona->tipo_documento }}: {{ $venta->cliente->persona->numero_documento }}</small>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="label-title">Sucursal</div>
                 <div class="value-text">{{ $venta->almacen->nombre ?? 'N/A' }}</div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="label-title">Tipo Comprobante</div>
                 <div class="value-text">{{ $venta->comprobante->tipo_comprobante ?? 'N/A' }}</div>
+            </div>
+            <div class="col-md-3">
+                <div class="label-title">Método de Pago</div>
+                @php
+                    $metodo = $venta->metodo_pago ?? 'efectivo';
+                    $metodoLabel = match ($metodo) {
+                        'debito' => 'Débito',
+                        'qr' => 'QR',
+                        'deposito' => 'Depósito',
+                        default => 'Efectivo',
+                    };
+                @endphp
+                <div class="value-text"><span class="badge bg-light text-dark border">{{ $metodoLabel }}</span></div>
             </div>
         </div>
 
@@ -87,37 +100,49 @@
         </div>
 
         <div class="row g-3 mb-2">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="label-title mb-2">Estado de Pago</div>
-                <div class="dropdown">
+                <div class="dropdown custom-dropdown">
                     @php
-                        $btnClass = (in_array($venta->estado_pago, ['pendiente', '0', 0])) ? 'btn-outline-danger' : 
-                                   (in_array($venta->estado_pago, ['cancelado', 'anulado']) ? 'btn-outline-secondary' : 'btn-outline-success');
-                        $statusTxt = (in_array($venta->estado_pago, ['pendiente', '0', 0])) ? 'Pendiente' : 
-                                    (in_array($venta->estado_pago, ['cancelado', 'anulado']) ? ucfirst($venta->estado_pago) : 'Pagado');
+                        $estadoPago = $venta->estado_pago;
+                        $btnClass = (in_array($estadoPago, ['pendiente', '0', 0])) ? 'btn-danger' : 
+                                   ($estadoPago === 'parcial' ? 'btn-warning' : 
+                                   (in_array($estadoPago, ['cancelado', 'anulado']) ? 'btn-secondary' : 'btn-success'));
+                        $statusTxt = (in_array($estadoPago, ['pendiente', '0', 0])) ? 'Pendiente' : 
+                                    ($estadoPago === 'parcial' ? 'Parcial' : 
+                                    (in_array($estadoPago, ['cancelado', 'anulado']) ? ucfirst($estadoPago) : 'Pagado'));
                     @endphp
-                    <button class="btn {{ $btnClass }} btn-sm dropdown-toggle w-100" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn {{ $btnClass }} btn-sm dropdown-toggle w-100 text-white fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 20px;">
                         {{ $statusTxt }}
                     </button>
                     <ul class="dropdown-menu w-100 shadow-sm border-0">
-                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pagado">Marcar como Pagado</a></li>
-                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pendiente">Marcar como Pendiente</a></li>
+                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pagado">Pagado</a></li>
+                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="parcial">Parcial...</a></li>
+                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pendiente">Pendiente</a></li>
                     </ul>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="label-title mb-2">Estado de Entrega</div>
-                <div class="dropdown">
+                <div class="dropdown custom-dropdown">
                     @php
                         $entregaTxt = $venta->estado_entrega == 'entregado' ? 'Entregado' : 'Por Entregar';
+                        $entregaClass = $venta->estado_entrega == 'entregado' ? 'btn-success' : 'btn-warning';
                     @endphp
-                    <button class="btn {{ $venta->estado_entrega == 'entregado' ? 'btn-outline-success' : 'btn-outline-warning' }} btn-sm dropdown-toggle w-100 text-dark" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn {{ $entregaClass }} btn-sm dropdown-toggle w-100 text-white fw-bold" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-radius: 20px;">
                         {{ $entregaTxt }}
                     </button>
                     <ul class="dropdown-menu w-100 shadow-sm border-0">
                         <li><a class="dropdown-item change-status-entrega" href="#" data-venta-id="{{ $venta->id }}" data-status="entregado">Entregado</a></li>
                         <li><a class="dropdown-item change-status-entrega" href="#" data-venta-id="{{ $venta->id }}" data-status="por_entregar">Por Entregar</a></li>
                     </ul>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="label-title mb-2">Resumen Financiero</div>
+                <div class="ps-2 border-start border-3 border-primary">
+                    <div class="extra-small text-muted">Pagado: <span class="fw-bold text-dark">Bs. {{ number_format((float)($venta->monto_pagado ?? 0), 2) }}</span></div>
+                    <div class="extra-small text-muted">Saldo: <span class="fw-bold text-danger">Bs. {{ number_format((float)($venta->saldo ?? 0), 2) }}</span></div>
                 </div>
             </div>
 

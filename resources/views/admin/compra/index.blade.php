@@ -272,8 +272,8 @@
                                         <div class="btn-action-group">
                                             @can('mostrar-compra')
                                                 <button type="button" class="btn-icon-soft view-compra"
-                                                        data-compra-id="{{ $item->id }}" data-bs-toggle="modal"
-                                                        data-bs-target="#viewCompraModal" title="Ver Detalles">
+                                                        data-compra-id="{{ $item->id }}"
+                                                        title="Ver Detalles">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
                                             @endcan
@@ -768,6 +768,11 @@
             const button = e.target.classList.contains('view-compra') ?
                 e.target : e.target.closest('.view-compra');
             const compraId = button.dataset.compraId;
+            
+            const modalElement = document.getElementById('viewCompraModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+            modal.show();
+
             loadCompraDetails(compraId);
         }
 

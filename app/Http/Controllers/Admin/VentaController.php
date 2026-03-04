@@ -179,7 +179,7 @@ class VentaController extends Controller
 
         $clientes = Cliente::with(['persona' => function ($query) {
             $query->where('estado', 1);
-        }])->get();
+        }, 'grupo'])->get();
 
         $comprobantes = Comprobante::all();
         
@@ -247,81 +247,19 @@ class VentaController extends Controller
                 return redirect()->back()->withInput()->with('error', 'No tiene permiso para realizar ventas en este almacén.');
             }
 
-            DB::beginTransaction();
-
-            // Validar stock de forma masiva
-            $items = [];
-            foreach ($request->arrayidproducto as $index => $productoId) {
-                $items[] = [
-                    'producto_id' => $productoId,
-                    'cantidad' => $request->arraycantidad[$index]
-                ];
-            }
-            $this->ventaService->validarStockDisponible($items, $request->almacen_id);
-
             $numeroComprobante = $request->numero_comprobante;
             if (empty($numeroComprobante)) {
                 $numeroComprobante = $this->getNextComprobanteNumber();
             }
 
-            $venta = Venta::create([
-                'fecha_hora' => $request->fecha_hora ?? now(),
-                'numero_comprobante' => $numeroComprobante,
-                'total' => 0,
-                'metodo_pago' => $request->input('metodo_pago', 'efectivo'),
-                'monto_pagado' => 0,
-                'estado_pago' => 'pendiente',
-                'estado_entrega' => 'por_entregar',
-                'cliente_id' => $request->cliente_id,
-                'almacen_id' => $request->almacen_id,
-                'comprobante_id' => $request->comprobante_id,
-                'user_id' => auth()->id(),
-                'nota_personal' => $request->nota_personal ?? null,
-                'nota_cliente' => $request->nota_cliente ?? null,
-            ]);
+            $data = $request->validated();
+            $data['numero_comprobante'] = $numeroComprobante;
 
-            $total = 0;
-            foreach ($request->arrayidproducto as $index => $productoId) {
-                $cantidad = floatval($request->arraycantidad[$index] ?? 0);
-                $precioVenta = floatval($request->arrayprecioventa[$index] ?? 0);
-                $descuento = floatval($request->arraydescuento[$index] ?? 0);
-
-                if (empty($productoId) || $cantidad <= 0 || $precioVenta <= 0) {
-                    continue;
-                }
-
-                $venta->detalles()->create([
-                    'producto_id' => $productoId,
-                    'cantidad' => $cantidad,
-                    'precio_venta' => $precioVenta,
-                    'descuento' => $descuento
-                ]);
-
-                $total += ($cantidad * $precioVenta) - $descuento;
-            }
-
-            $montoPagado = (float) $request->input('monto_pagado', 0);
-            if ($request->input('estado_pago') === 'pagado') {
-                $montoPagado = $total;
-            }
-            $montoPagado = max(0.0, min($montoPagado, (float) $total));
-            $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
-
-            $venta->update([
-                'total' => $total,
-                'monto_pagado' => $montoPagado,
-                'estado_pago' => $estadoPago,
-            ]);
-
-            // Procesar salida de stock
-            $this->ventaService->procesarSalidaStock($venta);
-
-            DB::commit();
+            $this->ventaService->crearVenta($data, auth()->id());
 
             return redirect()->route('ventas.index')
                 ->with('success', 'Venta registrada exitosamente');
         } catch (Exception $e) {
-            DB::rollBack();
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error al registrar la venta: ' . $e->getMessage());
@@ -376,7 +314,7 @@ class VentaController extends Controller
 
         $clientes = Cliente::with(['persona' => function ($query) {
             $query->where('estado', 1);
-        }])->get();
+        }, 'grupo'])->get();
 
         return view('admin.venta.edit', compact('venta', 'productos', 'clientes', 'comprobantes', 'almacenes'));
     }
@@ -384,90 +322,16 @@ class VentaController extends Controller
     public function update(UpdateVentaRequest $request, string $id)
     {
         try {
-            // Validar acceso al almacen original y al nuevo
             $venta = Venta::findOrFail($id);
             if (!$this->canAccessAlmacen($venta->almacen_id) || !$this->canAccessAlmacen($request->almacen_id)) {
                 return redirect()->back()->withInput()->with('error', 'Acceso denegado al almacen.');
             }
 
-            DB::beginTransaction();
-
-            // Cargar con relaciones para el service
-            $venta = Venta::with('detalles.producto.tipounidad')->findOrFail($id);
-
-            // 1. Revertir stock (del almacen que tenía la venta originalmente)
-            $this->ventaService->revertirStock($venta);
-
-            // 2. Eliminar detalles viejos
-            $venta->detalles()->delete();
-
-            // 3. Update Venta info
-            $venta->update([
-                'numero_comprobante' => $request->numero_comprobante ?? $venta->numero_comprobante,
-                'fecha_hora' => $request->fecha_hora ?? now(),
-                'cliente_id' => $request->cliente_id,
-                'almacen_id' => $request->almacen_id,
-                'comprobante_id' => $request->comprobante_id,
-                'nota_personal' => $request->nota_personal ?? null,
-                'nota_cliente' => $request->nota_cliente ?? null,
-            ]);
-
-            // 4. Validar nuevo stock disponible (en el nuevo almacen)
-            $items = [];
-            foreach ($request->arrayidproducto as $index => $productoId) {
-                $items[] = [
-                    'producto_id' => $productoId,
-                    'cantidad' => floatval($request->arraycantidad[$index] ?? 0)
-                ];
-            }
-            $this->ventaService->validarStockDisponible($items, $request->almacen_id);
-
-            // 5. Crear nuevos detalles
-            $total = 0;
-            foreach ($request->arrayidproducto as $index => $productoId) {
-                $cantidad = floatval($request->arraycantidad[$index] ?? 0);
-                $precioVenta = floatval($request->arrayprecioventa[$index] ?? 0);
-                $descuento = floatval($request->arraydescuento[$index] ?? 0);
-
-                if (empty($productoId) || $cantidad <= 0 || $precioVenta <= 0) {
-                    continue;
-                }
-                $venta->detalles()->create([
-                    'producto_id' => $productoId,
-                    'cantidad' => $cantidad,
-                    'precio_venta' => $precioVenta,
-                    'descuento' => $descuento
-                ]);
-
-                $total += ($cantidad * $precioVenta) - $descuento;
-            }
-            $venta->update(['total' => $total]);
-
-            $montoPagado = (float) $request->input('monto_pagado', $venta->monto_pagado ?? 0);
-            if ($request->input('estado_pago') === 'pagado') {
-                $montoPagado = $total;
-            } elseif ($request->input('estado_pago') === 'pendiente') {
-                $montoPagado = 0;
-            }
-            $montoPagado = max(0.0, min($montoPagado, (float) $total));
-            $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
-
-            $venta->update([
-                'metodo_pago' => $request->input('metodo_pago', $venta->metodo_pago ?? 'efectivo'),
-                'monto_pagado' => $montoPagado,
-                'estado_pago' => $estadoPago,
-            ]);
-
-            // 6. Salida stock nuevamente (asegurarse de usar detalles recién creados)
-            $venta->refresh();
-            $this->ventaService->procesarSalidaStock($venta);
-
-            DB::commit();
+            $this->ventaService->actualizarVenta($venta, $request->validated());
 
             return redirect()->route('ventas.index')
                 ->with('success', 'Venta actualizada exitosamente');
         } catch (Exception $e) {
-            DB::rollBack();
             return redirect()->back()
                 ->withInput()
                 ->with('error', 'Error al actualizar la venta: ' . $e->getMessage());
