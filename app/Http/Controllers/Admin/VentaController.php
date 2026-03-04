@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Services\VentaService;
+use Illuminate\Support\Facades\URL;
 
 class VentaController extends Controller
 {
@@ -171,6 +172,28 @@ class VentaController extends Controller
         return $pdf->download($fileName);
     }
 
+    public function facturaPublica(Venta $venta, Request $request)
+    {
+        $venta->load([
+            'comprobante',
+            'cliente.persona',
+            'user',
+            'detalles.producto',
+            'almacen'
+        ]);
+
+        $pdf = Pdf::loadview('admin.venta.pdf', compact('venta'))
+            ->setPaper('a4', 'portrait');
+
+        $fileName = "VENTA-{$venta->numero_comprobante}.pdf";
+
+        if ($request->boolean('download')) {
+            return $pdf->download($fileName);
+        }
+
+        return $pdf->stream($fileName);
+    }
+
     public function create()
     {
         // Obtener productos activos con información básica
@@ -278,9 +301,20 @@ class VentaController extends Controller
         $venta->load(['comprobante', 'cliente.persona', 'user', 'detalles.producto.tipounidad', 'almacen']);
 
         if (request()->ajax() || request()->wantsJson()) {
+            $telefono = optional(optional($venta->cliente)->persona)->telefono;
+            $pdfUrl = route('ventas.pdf', ['id' => $venta->id]);
+            $facturaUrl = URL::temporarySignedRoute(
+                'facturas.ventas',
+                now()->addDays(30),
+                ['venta' => $venta->id]
+            );
+
             return response()->json([
                 'success' => true,
                 'venta' => $venta,
+                'telefono' => $telefono,
+                'pdf_url' => $pdfUrl,
+                'factura_url' => $facturaUrl,
                 'html' => view('admin.venta.show-modal', compact('venta'))->render()
             ]);
         }

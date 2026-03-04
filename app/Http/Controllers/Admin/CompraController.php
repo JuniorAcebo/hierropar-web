@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use App\Traits\FilterByAlmacen;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\URL;
 
 class CompraController extends Controller
 {
@@ -42,6 +43,28 @@ class CompraController extends Controller
         }
 
         return $pdf->download($fileName);
+    }
+
+    public function facturaPublica(Compra $compra, Request $request)
+    {
+        $compra->load([
+            'comprobante',
+            'proveedor.persona',
+            'detalles.producto',
+            'almacen',
+            'user'
+        ]);
+
+        $pdf = Pdf::loadview('admin.compra.pdf', compact('compra'))
+            ->setPaper('a4', 'portrait');
+
+        $fileName = "COMPRA-{$compra->numero_comprobante}.pdf";
+
+        if ($request->boolean('download')) {
+            return $pdf->download($fileName);
+        }
+
+        return $pdf->stream($fileName);
     }
 
     protected $compraService;
@@ -280,8 +303,19 @@ class CompraController extends Controller
         $compra->load(['comprobante', 'proveedor.persona', 'detalles.producto', 'almacen', 'user']);
 
         if (request()->ajax() || request()->wantsJson()) {
+            $telefono = optional(optional($compra->proveedor)->persona)->telefono;
+            $pdfUrl = route('compras.pdf', ['id' => $compra->id]);
+            $facturaUrl = URL::temporarySignedRoute(
+                'facturas.compras',
+                now()->addDays(30),
+                ['compra' => $compra->id]
+            );
+
             return response()->json([
                 'success' => true,
+                'telefono' => $telefono,
+                'pdf_url' => $pdfUrl,
+                'factura_url' => $facturaUrl,
                 'html' => view('admin.compra.show-modal', compact('compra'))->render()
             ]);
         }

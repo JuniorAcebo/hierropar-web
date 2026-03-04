@@ -373,14 +373,26 @@
                                 <p class="mt-2 text-muted small">Cargando detalles de la compra...</p>
                             </div>
                         </div>
-                        <div class="modal-footer border-0">
-                            <a href="#" id="pdfButton" class="btn btn-outline-danger btn-sm px-4" target="_blank">
-                                <i class="fas fa-file-pdf me-1"></i> Descargar PDF
-                            </a>
-                            <button id="printPdfButton" class="btn btn-outline-primary btn-sm px-4">
-                                <i class="fas fa-print me-1"></i> Imprimir
-                            </button>
-                            <button type="button" class="btn btn-light btn-sm px-4" data-bs-dismiss="modal">Cerrar</button>
+                        <div class="modal-footer border-0 d-flex flex-wrap gap-2 justify-content-between">
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <a href="#" id="pdfButton" class="btn btn-outline-danger btn-sm px-4" target="_blank">
+                                    <i class="fas fa-file-pdf me-1"></i> Descargar PDF
+                                </a>
+
+                                <input type="text" id="whatsappPhoneInput" class="form-control form-control-sm" style="width: 220px;"
+                                    placeholder="WhatsApp (ej: 5917xxxxxxx)">
+
+                                <button id="whatsappButton" type="button" class="btn btn-success btn-sm px-4" title="Enviar link por WhatsApp">
+                                    <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                                </button>
+                            </div>
+
+                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                <button id="printPdfButton" class="btn btn-outline-primary btn-sm px-4">
+                                    <i class="fas fa-print me-1"></i> Imprimir
+                                </button>
+                                <button type="button" class="btn btn-light btn-sm px-4" data-bs-dismiss="modal">Cerrar</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -452,6 +464,23 @@
     let debounceTimer;
     const tableContainer = document.getElementById('table-container');
     let selectedCompras = new Set();
+    let currentFacturaUrl = null;
+
+    function normalizeWhatsappPhone(raw) {
+        if (!raw) return '';
+        let digits = String(raw).replace(/\D/g, '');
+        if (!digits) return '';
+
+        // Si el número parece local (7-8 dígitos), prefijar Bolivia (591) por defecto.
+        if (digits.length <= 8) digits = `591${digits}`;
+
+        return digits;
+    }
+
+    function openWhatsappWithText(phoneDigits, text) {
+        const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
 
     // NUEVO: Sistema de selección (igual que Productos)
     function initializeSelectionSystem() {
@@ -776,6 +805,36 @@
             loadCompraDetails(compraId);
         }
 
+        if (e.target.closest('#whatsappButton')) {
+            e.preventDefault();
+            const phoneInput = document.getElementById('whatsappPhoneInput');
+            const pdfBtn = document.getElementById('pdfButton');
+
+            const phoneDigits = normalizeWhatsappPhone(phoneInput ? phoneInput.value : '');
+            const facturaUrl = currentFacturaUrl || (pdfBtn ? pdfBtn.href : '');
+
+            if (!phoneDigits) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Número requerido',
+                    text: 'Escribe un número de WhatsApp (ej: 5917xxxxxxx).'
+                });
+                return;
+            }
+
+            if (!facturaUrl) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Sin link',
+                    text: 'No se pudo obtener el link de la factura.'
+                });
+                return;
+            }
+
+            openWhatsappWithText(phoneDigits, facturaUrl);
+            return;
+        }
+
         if (e.target.closest('#printPdfButton')) {
             e.preventDefault();
             const pdfBtn = document.getElementById('pdfButton');
@@ -820,7 +879,11 @@
         .then(data => {
             if (data.success) {
                 modalContent.innerHTML = data.html;
-                pdfButton.href = `${comprasBaseUrl}/pdf/${compraId}`;
+                pdfButton.href = data.pdf_url || `${comprasBaseUrl}/pdf/${compraId}`;
+                currentFacturaUrl = data.factura_url || null;
+
+                const phoneInput = document.getElementById('whatsappPhoneInput');
+                if (phoneInput) phoneInput.value = data.telefono || '';
             } else {
                 throw new Error(data.message || 'Error en los datos recibidos');
             }

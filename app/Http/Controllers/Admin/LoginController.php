@@ -12,10 +12,6 @@ class LoginController extends Controller
 {
     public function index(Request $request)
     {
-        if (Auth::check()) {
-            return redirect()->intended(route('panel'));
-        }
-
         return view('admin.auth.login');
     }
 // comando para refrescar la base de datos php artisan migrate:refresh --seed

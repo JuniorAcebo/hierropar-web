@@ -26,9 +26,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return view('admin.welcome');
-})->name('welcome');
+Route::redirect('/', '/admin/login');
 
 Route::prefix('admin')->group(function () {
     // --- Autenticacion ---
@@ -36,7 +34,12 @@ Route::prefix('admin')->group(function () {
         Route::get('/login', 'index')->name('login');
         Route::post('/login', 'login');
     });
-    Route::get('/logout', [LogoutController::class, 'logout'])->name('logout');
+
+    // --- Facturas públicas (links firmados para compartir por WhatsApp) ---
+    Route::middleware('signed')->group(function () {
+        Route::get('/facturas/ventas/{venta}', [VentaController::class, 'facturaPublica'])->name('facturas.ventas');
+        Route::get('/facturas/compras/{compra}', [CompraController::class, 'facturaPublica'])->name('facturas.compras');
+    });
 
     Route::middleware('auth')->group(function () {
         // --- Exportacion Universal ---
@@ -117,6 +120,8 @@ Route::prefix('admin')->group(function () {
         Route::patch('clientes/{persona}/estado', [ClienteController::class, 'changeState'])->name('clientes.changeState');
 
         Route::resource('tipounidades', TipoUnidadController::class)->parameters(['tipounidades' => 'tipounidad']);
+
+        Route::get('/logout', [LogoutController::class, 'logout'])->name('logout');
     });
 
     // --- Paginas de Error ---
