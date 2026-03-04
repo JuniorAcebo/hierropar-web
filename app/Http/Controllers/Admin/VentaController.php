@@ -197,8 +197,9 @@ class VentaController extends Controller
     public function create()
     {
         // Obtener productos activos con información básica
-        $productos = Producto::where('estado', 1)
-            ->get(['id', 'codigo', 'nombre', 'precio_compra', 'precio_venta']);
+        $productos = Producto::with('tipounidad:id,nombre,maneja_stock')
+            ->where('estado', 1)
+            ->get(['id', 'codigo', 'nombre', 'precio_compra', 'precio_venta', 'tipounidad_id']);
 
         $clientes = Cliente::with(['persona' => function ($query) {
             $query->where('estado', 1);

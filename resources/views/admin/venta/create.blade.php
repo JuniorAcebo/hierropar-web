@@ -391,6 +391,23 @@
 
                 const storageId = $('#almacen_id').val();
 
+                const isServicio = p.tipounidad && p.tipounidad.maneja_stock === false;
+                if (isServicio) {
+                    selectedItem = { ...p, stock: Number.POSITIVE_INFINITY, ilimitado: true };
+                    $('#sel_name').text(p.nombre);
+                    $('#sel_codigo').val(p.codigo);
+                    $('#sel_precio').val(parseFloat(p.precio_venta).toFixed(2));
+                    $('#sel_cantidad').val('1.000').focus();
+                    setStockBadge(0, true);
+                    $('#selection_card').slideDown();
+                    return;
+                }
+
+                if (!storageId) {
+                    Swal.fire('Sucursal requerida', 'Seleccione una sucursal antes de elegir un producto.', 'warning');
+                    return;
+                }
+
                 // Show loading state
                 Swal.showLoading();
 
@@ -422,6 +439,7 @@
             async function refreshSelectedStockForAlmacen(almacenId) {
                 if (!selectedItem) return;
                 if (!$('#selection_card').is(':visible')) return;
+                if (selectedItem.ilimitado) return;
 
                 try {
                     Swal.showLoading();
