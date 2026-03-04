@@ -81,6 +81,13 @@ class PermissionSeeder extends Seeder
             'mostrar-venta',
             'eliminar-venta',
 
+            //Cotización
+            'ver-cotizacion',
+            'crear-cotizacion',
+            'editar-cotizacion',
+            'mostrar-cotizacion',
+            'eliminar-cotizacion',
+
             //Ver GrupoCliente
             'ver-grupocliente',
             'crear-grupocliente',

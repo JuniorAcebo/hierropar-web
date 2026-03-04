@@ -143,4 +143,61 @@ class CompraService
             }
         }
     }
+
+    /**
+     * Centraliza la creación de una compra y sus detalles.
+     */
+    public function crearCompra(array $data, $userId)
+    {
+        return DB::transaction(function () use ($data, $userId) {
+            $compra = Compra::create([
+                'fecha_hora' => $data['fecha_hora'] ?? now(),
+                'numero_comprobante' => $data['numero_comprobante'],
+                'total' => 0,
+                'metodo_pago' => $data['metodo_pago'] ?? 'efectivo',
+                'monto_pagado' => 0,
+                'costo_transporte' => $data['costo_transporte'] ?? 0,
+                'nota_personal' => $data['nota_personal'] ?? null,
+                'estado_pago' => $data['estado_pago'] ?? 'pendiente',
+                'estado_entrega' => $data['estado_entrega'] ?? 'por_entregar',
+                'comprobante_id' => $data['comprobante_id'],
+                'proveedor_id' => $data['proveedor_id'],
+                'almacen_id' => $data['almacen_id'],
+                'user_id' => $userId,
+            ]);
+
+            $total = 0;
+            foreach ($data['arrayidproducto'] as $index => $productoId) {
+                $cantidad = $data['arraycantidad'][$index];
+                $precioCompra = $data['arraypreciocompra'][$index];
+                $precioVenta = $data['arrayprecioventa'][$index];
+
+                $compra->detalles()->create([
+                    'producto_id' => $productoId,
+                    'cantidad' => $cantidad,
+                    'precio_compra' => $precioCompra,
+                    'precio_venta' => $precioVenta,
+                ]);
+
+                $total += ($cantidad * $precioCompra);
+            }
+
+            $montoPagado = (float)($data['monto_pagado'] ?? 0);
+            if (($data['estado_pago'] ?? '') === 'pagado') {
+                $montoPagado = $total;
+            }
+            $montoPagado = max(0.0, min($montoPagado, (float) $total));
+            $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
+
+            $compra->update([
+                'total' => $total,
+                'monto_pagado' => $montoPagado,
+                'estado_pago' => $estadoPago,
+            ]);
+
+            $this->procesarEntradaStock($compra);
+
+            return $compra;
+        });
+    }
 }

@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\TipoUnidadController;
 use App\Http\Controllers\Admin\TrasladoController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\VentaController;
+use App\Http\Controllers\Admin\CotizacionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -87,6 +88,13 @@ Route::prefix('admin')->group(function () {
             Route::get('/pdf/{id}', [CompraController::class, 'generarPdf'])->name('pdf');
         });
 
+        // --- Gestion de Cotizaciones ---
+        Route::prefix('cotizaciones')->name('cotizaciones.')->group(function () {
+            Route::post('/{cotizacion}/convertir-venta', [CotizacionController::class, 'convertirVenta'])->name('convertir-venta');
+            Route::post('/{cotizacion}/convertir-compra', [CotizacionController::class, 'convertirCompra'])->name('convertir-compra');
+            Route::get('/pdf/{cotizacion}', [CotizacionController::class, 'generarPdf'])->name('pdf');
+        });
+
         // --- Gestion de Traslados ---
         Route::prefix('traslados')->name('traslados.')->group(function () {
             Route::patch('/{traslado}/update-estado', [TrasladoController::class, 'toggleEstado'])->name('toggleEstado');
@@ -112,8 +120,9 @@ Route::prefix('admin')->group(function () {
             'traslados'     => TrasladoController::class,
             'almacenes'     => AlmacenController::class,
             'grupoclientes' => GrupoClientesController::class,
+            'cotizaciones'  => CotizacionController::class,
         ], [
-            'parameters' => ['almacenes' => 'almacen']
+            'parameters' => ['almacenes' => 'almacen', 'cotizaciones' => 'cotizacion']
         ]);
 
         // --- Estado de cliente (activar/desactivar) ---

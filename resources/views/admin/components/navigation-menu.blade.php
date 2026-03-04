@@ -97,6 +97,25 @@
                     </div>
                 @endcan
 
+                <!-- COTIZACIONES -->
+                @can('ver-cotizacion')
+                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseCotizaciones" aria-expanded="false">
+                        <div class="sb-nav-link-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                        Cotizaciones
+                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-chevron-down"></i></div>
+                    </a>
+                    <div class="collapse" id="collapseCotizaciones" data-bs-parent="#sidenavAccordion">
+                        <nav class="sb-sidenav-menu-nested nav">
+                            @can('ver-cotizacion')
+                                <a class="nav-link" href="{{ route('cotizaciones.index') }}"><i class="fa-solid fa-list-ul me-1"></i>Lista</a>
+                            @endcan
+                            @can('crear-cotizacion')
+                                <a class="nav-link" href="{{ route('cotizaciones.create') }}"><i class="fa-solid fa-plus me-1"></i>Crear</a>
+                            @endcan
+                        </nav>
+                    </div>
+                @endcan
+
                 @can('ver-traslado')
                     <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseTraslados" aria-expanded="false">
                         <div class="sb-nav-link-icon"><i class="fa-solid fa-exchange-alt"></i></div>
