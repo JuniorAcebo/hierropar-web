@@ -10,11 +10,11 @@ class ClienteSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1️⃣ Crear o traer la persona
+        // Crear o traer la persona
         $persona = Persona::firstOrCreate(
             [
                 'numero_documento' => '0',
-                'documento_id'     => 1, // 👈 el documento que dijiste
+                'documento_id'     => 1,
             ],
             [
                 'razon_social' => 'Cliente General',
@@ -25,13 +25,13 @@ class ClienteSeeder extends Seeder
             ]
         );
 
-        // 2️⃣ Crear o traer el cliente asociado
+        // Crear o traer el cliente asociado
         Cliente::firstOrCreate(
             [
                 'persona_id' => $persona->id,
             ],
             [
-                'grupo_cliente_id' => 3,
+                'grupo_cliente_id' => 1,
             ]
         );
     }

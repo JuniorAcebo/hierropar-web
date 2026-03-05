@@ -17,6 +17,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
 use App\Services\VentaService;
 use Illuminate\Support\Facades\URL;
+use App\Models\VentaPago;
 
 class VentaController extends Controller
 {
@@ -47,7 +48,7 @@ class VentaController extends Controller
         if (!in_array($perPage, [5, 10, 15, 20, 25])) $perPage = 10;
         if (!in_array($direction, ['asc', 'desc'])) $direction = 'desc';
 
-        $query = Venta::with(['comprobante', 'cliente.persona', 'user'])
+        $query = Venta::with(['comprobante', 'cliente.persona', 'user', 'pagos'])
             ->where('estado', 1);
 
         // Filtrar por almacén del usuario
@@ -68,7 +69,9 @@ class VentaController extends Controller
         }
 
         if ($metodoPago) {
-            $query->where('metodo_pago', $metodoPago);
+            $query->whereHas('pagos', function ($q) use ($metodoPago) {
+                $q->where('metodo_pago', $metodoPago);
+            });
         }
         if ($dateFrom) {
             $query->whereDate('fecha_hora', '>=', $dateFrom);
@@ -102,7 +105,11 @@ class VentaController extends Controller
         // Estadísticas para el footer - Filtradas por almacen
         $statsQuery = Venta::where('estado', 1);
         $statsQuery = $this->filterByUserAlmacen($statsQuery);
-        if ($metodoPago) $statsQuery->where('metodo_pago', $metodoPago);
+        if ($metodoPago) {
+            $statsQuery->whereHas('pagos', function ($q) use ($metodoPago) {
+                $q->where('metodo_pago', $metodoPago);
+            });
+        }
         if ($dateFrom) $statsQuery->whereDate('fecha_hora', '>=', $dateFrom);
         if ($dateTo) $statsQuery->whereDate('fecha_hora', '<=', $dateTo);
 
@@ -299,7 +306,7 @@ class VentaController extends Controller
             return redirect()->route('ventas.index')->with('error', 'No tiene acceso a esta venta.');
         }
 
-        $venta->load(['comprobante', 'cliente.persona', 'user', 'detalles.producto.tipounidad', 'almacen']);
+        $venta->load(['comprobante', 'cliente.persona', 'user', 'detalles.producto.tipounidad', 'almacen', 'pagos']);
 
         if (request()->ajax() || request()->wantsJson()) {
             $telefono = optional(optional($venta->cliente)->persona)->telefono;
@@ -328,7 +335,8 @@ class VentaController extends Controller
         $venta = Venta::with([
             'comprobante',
             'cliente.persona',
-            'detalles.producto.tipounidad'
+            'detalles.producto.tipounidad',
+            'pagos'
         ])->findOrFail($id);
 
         if (!$this->canAccessAlmacen($venta->almacen_id)) {
@@ -405,7 +413,7 @@ class VentaController extends Controller
     public function actualizarEstadoPago(Request $request, string $id)
     {
         try {
-            $venta = Venta::findOrFail($id);
+            $venta = Venta::with('pagos')->findOrFail($id);
 
             if (!$this->canAccessAlmacen($venta->almacen_id)) {
                 return response()->json(['success' => false, 'message' => 'Acceso denegado'], 403);
@@ -425,24 +433,35 @@ class VentaController extends Controller
                 $this->ventaService->procesarSalidaStock($venta);
             }
 
-            $updates = ['estado_pago' => $estadoNuevo];
-
-            if ($request->filled('metodo_pago')) {
-                $updates['metodo_pago'] = $request->input('metodo_pago');
-            }
-
-            if (in_array($estadoNuevo, ['cancelado', 'anulado'])) {
-                $updates['monto_pagado'] = 0;
-            } elseif ($estadoNuevo === 'pagado') {
-                $updates['monto_pagado'] = (float) $venta->total;
-            } elseif ($estadoNuevo === 'pendiente') {
-                $updates['monto_pagado'] = 0;
+            if (in_array($estadoNuevo, ['cancelado', 'anulado', 'pendiente'])) {
+                $venta->pagos()->delete();
             } elseif ($estadoNuevo === 'parcial') {
-                $montoPagado = (float) $request->input('monto_pagado', $venta->monto_pagado ?? 0);
-                $updates['monto_pagado'] = max(0.0, min($montoPagado, (float) $venta->total));
+                $metodo = $request->input('metodo_pago', 'efectivo');
+                $monto = (float) $request->input('monto_pagado', 0);
+                $monto = max(0.0, min($monto, (float) $venta->saldo));
+                if ($monto > 0) {
+                    $venta->pagos()->create(['metodo_pago' => $metodo, 'monto' => $monto]);
+                }
+            } elseif ($estadoNuevo === 'pagado') {
+                $metodo = $request->input('metodo_pago', 'efectivo');
+                $saldo = (float) $venta->saldo;
+                if ($saldo > 0) {
+                    $venta->pagos()->create(['metodo_pago' => $metodo, 'monto' => $saldo]);
+                }
             }
 
-            $venta->update($updates);
+            $venta->refresh();
+            $montoPagado = (float) $venta->pagos()->sum('monto');
+            $estadoPago = $montoPagado >= (float) $venta->total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
+            $metodoPago = $venta->pagos()->distinct()->count('metodo_pago') > 1
+                ? 'mixto'
+                : ($venta->pagos()->value('metodo_pago') ?? 'efectivo');
+
+            $venta->update([
+                'estado_pago' => in_array($estadoNuevo, ['cancelado', 'anulado']) ? $estadoNuevo : $estadoPago,
+                'monto_pagado' => $montoPagado,
+                'metodo_pago' => $metodoPago,
+            ]);
 
             DB::commit();
 
@@ -479,5 +498,68 @@ class VentaController extends Controller
                 'message' => 'Error al actualizar el estado de entrega: ' . $e->getMessage()
             ], 400);
         }
+    }
+
+    public function reporteCaja(Request $request)
+    {
+        $dateFrom = $request->get('date_from') ?: now()->toDateString();
+        $dateTo = $request->get('date_to') ?: now()->toDateString();
+
+        $userAlmacenId = auth()->user()->almacen_id;
+
+        $base = VentaPago::query()
+            ->join('ventas', 'venta_pagos.venta_id', '=', 'ventas.id')
+            ->leftJoin('users', 'ventas.user_id', '=', 'users.id')
+            ->where('ventas.estado', 1)
+            ->whereNotIn('ventas.estado_pago', ['cancelado', 'anulado'])
+            ->whereDate('ventas.fecha_hora', '>=', $dateFrom)
+            ->whereDate('ventas.fecha_hora', '<=', $dateTo);
+
+        if ($userAlmacenId) {
+            $base->where('ventas.almacen_id', $userAlmacenId);
+        }
+
+        $rows = $base->selectRaw("ventas.user_id, COALESCE(users.name,'(Sin usuario)') as usuario, venta_pagos.metodo_pago, SUM(venta_pagos.monto) as monto")
+            ->groupBy('ventas.user_id', 'users.name', 'venta_pagos.metodo_pago')
+            ->orderBy('usuario')
+            ->get();
+
+        $report = [];
+        foreach ($rows as $r) {
+            $uid = $r->user_id ?? 0;
+            if (!isset($report[$uid])) {
+                $report[$uid] = [
+                    'user_id' => $uid,
+                    'usuario' => $r->usuario,
+                    'efectivo' => 0.0,
+                    'qr' => 0.0,
+                    'debito' => 0.0,
+                    'deposito' => 0.0,
+                    'otro' => 0.0,
+                ];
+            }
+            $metodo = $r->metodo_pago;
+            if (isset($report[$uid][$metodo])) {
+                $report[$uid][$metodo] += (float) $r->monto;
+            }
+        }
+
+        $report = array_values(array_map(function ($row) {
+            $row['total'] = $row['efectivo'] + $row['qr'] + $row['debito'] + $row['deposito'] + $row['otro'];
+            $row['debe_recoger_caja'] = $row['efectivo'];
+            return $row;
+        }, $report));
+
+        $totales = [
+            'efectivo' => array_sum(array_column($report, 'efectivo')),
+            'qr' => array_sum(array_column($report, 'qr')),
+            'debito' => array_sum(array_column($report, 'debito')),
+            'deposito' => array_sum(array_column($report, 'deposito')),
+            'otro' => array_sum(array_column($report, 'otro')),
+        ];
+        $totales['total'] = $totales['efectivo'] + $totales['qr'] + $totales['debito'] + $totales['deposito'] + $totales['otro'];
+        $totales['debe_recoger_caja'] = $totales['efectivo'];
+
+        return view('admin.venta.reporte-caja', compact('report', 'totales', 'dateFrom', 'dateTo'));
     }
 }
