@@ -18,11 +18,12 @@ class CotizacionService
                 'fecha_hora' => $data['fecha_hora'] ?? now(),
                 'numero_cotizacion' => $data['numero_cotizacion'],
                 'total' => 0,
-                'estado' => 'pendiente',
                 'cliente_id' => $data['cliente_id'] ?? null,
                 'proveedor_id' => $data['proveedor_id'] ?? null,
                 'almacen_id' => $data['almacen_id'],
                 'user_id' => $userId,
+                'venta_id' => null,
+                'compra_id' => null,
                 'vencimiento' => $data['vencimiento'] ?? null,
                 'nota_personal' => $data['nota_personal'] ?? null,
                 'nota_cliente' => $data['nota_cliente'] ?? null,
@@ -99,8 +100,8 @@ class CotizacionService
     public function convertirAVenta(Cotizacion $cotizacion, array $extraData = [])
     {
         return DB::transaction(function () use ($cotizacion, $extraData) {
-            if ($cotizacion->estado !== 'pendiente') {
-                throw new Exception("Esta cotización ya fue procesada o anulada.");
+            if (!empty($cotizacion->venta_id) || !empty($cotizacion->compra_id)) {
+                throw new Exception("Esta cotización ya fue procesada.");
             }
 
             // Mapear datos para VentaService
@@ -128,7 +129,7 @@ class CotizacionService
             $ventaService = app(VentaService::class);
             $venta = $ventaService->crearVenta($dataVenta, auth()->id());
 
-            $cotizacion->update(['estado' => 'venta_realizada']);
+            $cotizacion->update(['venta_id' => $venta->id]);
 
             return $venta;
         });
@@ -137,8 +138,8 @@ class CotizacionService
     public function convertirACompra(Cotizacion $cotizacion, array $extraData = [])
     {
         return DB::transaction(function () use ($cotizacion, $extraData) {
-            if ($cotizacion->estado !== 'pendiente') {
-                throw new Exception("Esta cotización ya fue procesada o anulada.");
+            if (!empty($cotizacion->venta_id) || !empty($cotizacion->compra_id)) {
+                throw new Exception("Esta cotización ya fue procesada.");
             }
 
             // Mapear datos para CompraService
@@ -167,7 +168,7 @@ class CotizacionService
             $compraService = app(CompraService::class);
             $compra = $compraService->crearCompra($dataCompra, auth()->id());
 
-            $cotizacion->update(['estado' => 'compra_realizada']);
+            $cotizacion->update(['compra_id' => $compra->id]);
 
             return $compra;
         });

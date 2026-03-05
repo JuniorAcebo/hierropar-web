@@ -177,7 +177,7 @@
                         <div class="row justify-content-end">
                             <div class="col-md-4">
                                 <div class="d-flex justify-content-between align-items-center p-2 bg-light border rounded">
-                                    <span class="fw-bold">TOTAL COTIZACIÃ“N:</span>
+                                    <span class="fw-bold">TOTAL COTIZACIÓN:</span>
                                     <span class="fs-5 fw-bold text-primary">Bs. <span id="label_total">0.00</span></span>
                                     <input type="hidden" name="total" id="input_total" value="0">
                                 </div>

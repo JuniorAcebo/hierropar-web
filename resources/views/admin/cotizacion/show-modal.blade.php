@@ -78,9 +78,7 @@
                     <small class="text-muted">Teléfono: {{ $cotizacion->cliente->persona->telefono ?? 'N/A' }}</small>
                 @elseif($cotizacion->proveedor)
                     <div class="value-text text-orange"><i class="fas fa-truck me-1"></i> {{ $cotizacion->proveedor->persona->razon_social }}</div>
-                    <small class="text-muted">Documento: {{ $cotizacion->proveedor->persona->documento->tipo_documento ?? 'N/A' }}</small>
-                    <br>
-                    <small class="text-muted">Nro Documento: {{ $cotizacion->proveedor->persona->numero_documento ?? 'N/A' }}</small>
+                    <small class="text-muted">{{ $cotizacion->proveedor->persona->documento->tipo_documento ?? 'N/A' }}: {{ $cotizacion->proveedor->persona->numero_documento ?? 'N/A' }}</small>
                     <br>
                     <small class="text-muted">Teléfono: {{ $cotizacion->proveedor->persona->telefono ?? 'N/A' }}</small>
                 @else
@@ -94,20 +92,15 @@
             <div class="col-md-4">
                 <div class="label-title">Estado Actual</div>
                 @php
-                    $badgeClass = match($cotizacion->estado) {
-                        'pendiente' => 'bg-info',
-                        'venta_realizada' => 'bg-success',
-                        'compra_realizada' => 'bg-primary',
-                        'anulado' => 'bg-danger',
-                        default => 'bg-secondary'
-                    };
-                    $estadoText = match($cotizacion->estado) {
-                        'pendiente' => 'Pendiente',
-                        'venta_realizada' => 'Venta Realizada',
-                        'compra_realizada' => 'Compra Realizada',
-                        'anulado' => 'Anulado',
-                        default => ucfirst($cotizacion->estado)
-                    };
+                    $badgeClass = 'bg-info';
+                    $estadoText = 'Pendiente';
+                    if ($cotizacion->venta_id) {
+                        $badgeClass = 'bg-success';
+                        $estadoText = 'Venta Realizada';
+                    } elseif ($cotizacion->compra_id) {
+                        $badgeClass = 'bg-primary';
+                        $estadoText = 'Compra Realizada';
+                    }
                 @endphp
                 <span class="badge {{ $badgeClass }} text-white fw-bold" style="border-radius: 20px; padding: 5px 15px;">
                     {{ $estadoText }}

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Venta;
+use App\Models\Compra;
 
 class Cotizacion extends Model
 {
@@ -20,11 +22,12 @@ class Cotizacion extends Model
         'fecha_hora',
         'numero_cotizacion',
         'total',
-        'estado',
         'cliente_id',
         'proveedor_id',
         'almacen_id',
         'user_id',
+        'venta_id',
+        'compra_id',
         'vencimiento',
         'nota_personal',
         'nota_cliente'
@@ -53,5 +56,15 @@ class Cotizacion extends Model
     public function detalles()
     {
         return $this->hasMany(DetalleCotizacion::class, 'cotizacion_id');
+    }
+
+    public function venta()
+    {
+        return $this->belongsTo(Venta::class, 'venta_id');
+    }
+
+    public function compra()
+    {
+        return $this->belongsTo(Compra::class, 'compra_id');
     }
 }

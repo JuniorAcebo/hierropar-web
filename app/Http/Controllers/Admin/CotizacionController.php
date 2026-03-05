@@ -34,11 +34,15 @@ class CotizacionController extends Controller
     public function index(Request $request)
     {
         $busqueda = $request->get('busqueda');
+        $tipo = $request->get('tipo');
         $dateFrom = $request->get('date_from');
         $dateTo = $request->get('date_to');
         $perPage = $request->get('per_page', 10);
         $sort = $request->get('sort', 'fecha_hora');
         $direction = $request->get('direction', 'desc');
+
+        if (!in_array($perPage, [5, 10, 15, 20, 25])) $perPage = 10;
+        if (!in_array($direction, ['asc', 'desc'])) $direction = 'desc';
 
         $query = Cotizacion::with(['cliente.persona', 'proveedor.persona', 'user', 'almacen']);
         $query->with(['cliente.persona.documento', 'proveedor.persona.documento']);
@@ -60,13 +64,33 @@ class CotizacionController extends Controller
         if ($dateFrom) $query->whereDate('fecha_hora', '>=', $dateFrom);
         if ($dateTo) $query->whereDate('fecha_hora', '<=', $dateTo);
 
-        $cotizaciones = $query->orderBy($sort, $direction)->paginate($perPage);
-
-        if ($request->ajax()) {
-            return view('admin.cotizacion.index', compact('cotizaciones', 'busqueda', 'dateFrom', 'dateTo', 'perPage', 'sort', 'direction'));
+        if ($tipo === 'cliente') {
+            $query->whereNotNull('cliente_id');
+        } elseif ($tipo === 'proveedor') {
+            $query->whereNotNull('proveedor_id');
         }
 
-        return view('admin.cotizacion.index', compact('cotizaciones', 'busqueda', 'dateFrom', 'dateTo', 'perPage', 'sort', 'direction'));
+        $allowedSorts = ['numero_cotizacion', 'fecha_hora', 'total', 'cliente'];
+        if (!in_array($sort, $allowedSorts)) $sort = 'fecha_hora';
+
+        if ($sort === 'cliente') {
+            $query->leftJoin('clientes', 'cotizaciones.cliente_id', '=', 'clientes.id')
+                ->leftJoin('personas as clientes_personas', 'clientes.persona_id', '=', 'clientes_personas.id')
+                ->leftJoin('proveedores', 'cotizaciones.proveedor_id', '=', 'proveedores.id')
+                ->leftJoin('personas as proveedores_personas', 'proveedores.persona_id', '=', 'proveedores_personas.id')
+                ->select('cotizaciones.*')
+                ->orderByRaw("COALESCE(clientes_personas.razon_social, proveedores_personas.razon_social) {$direction}");
+        } else {
+            $query->orderBy($sort, $direction);
+        }
+
+        $cotizaciones = $query->paginate($perPage);
+
+        if ($request->ajax()) {
+            return view('admin.cotizacion.index', compact('cotizaciones', 'busqueda', 'tipo', 'dateFrom', 'dateTo', 'perPage', 'sort', 'direction'));
+        }
+
+        return view('admin.cotizacion.index', compact('cotizaciones', 'busqueda', 'tipo', 'dateFrom', 'dateTo', 'perPage', 'sort', 'direction'));
     }
 
     public function create()

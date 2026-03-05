@@ -222,17 +222,7 @@
                     </div>
 
                     <div class="row g-3 align-items-end mt-1">
-                        <div class="col-md-3">
-                            <label class="text-muted small d-block mb-1">Estado</label>
-                            <select name="estado" class="form-select form-select-sm" style="border-radius: 6px;">
-                                <option value="">Todos</option>
-                                <option value="pendiente" {{ ($estado ?? '') === 'pendiente' ? 'selected' : '' }}>Pendiente</option>
-                                <option value="venta_realizada" {{ ($estado ?? '') === 'venta_realizada' ? 'selected' : '' }}>Venta Realizada</option>
-                                <option value="compra_realizada" {{ ($estado ?? '') === 'compra_realizada' ? 'selected' : '' }}>Compra Realizada</option>
-                                <option value="anulado" {{ ($estado ?? '') === 'anulado' ? 'selected' : '' }}>Anulado</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="text-muted small d-block mb-1">Tipo</label>
                             <select name="tipo" class="form-select form-select-sm" style="border-radius: 6px;">
                                 <option value="">Todos</option>
@@ -240,11 +230,11 @@
                                 <option value="proveedor" {{ ($tipo ?? '') === 'proveedor' ? 'selected' : '' }}>Proveedor</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="text-muted small d-block mb-1">Desde</label>
                             <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $dateFrom ?? '' }}" style="border-radius: 6px;">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-4">
                             <label class="text-muted small d-block mb-1">Hasta</label>
                             <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $dateTo ?? '' }}" style="border-radius: 6px;">
                         </div>
@@ -307,11 +297,6 @@
                                         Total <i class="fas fa-sort sort-icon"></i>
                                     </button>
                                 </th>
-                                <th class="text-center">
-                                    <button class="sort-btn {{ $sort == 'estado' ? 'active ' . $direction : '' }}" data-column="estado">
-                                        Estado <i class="fas fa-sort sort-icon"></i>
-                                    </button>
-                                </th>
                                 <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
@@ -337,12 +322,14 @@
                                             <div class="fw-semibold text-primary">
                                                 <i class="fas fa-user me-1"></i> {{ $cotizacion->cliente->persona->razon_social }}
                                             </div>
-                                            <div class="info-subtext">Cliente • {{ $cotizacion->cliente->persona->numero_documento ?? 'N/A' }}</div>
+                                            <div class="info-subtext">Cliente <br>{{ $cotizacion->cliente->persona->documento->tipo_documento ?? 'N/A' }}:
+                                                 {{ $cotizacion->cliente->persona->numero_documento ?? 'N/A' }}</div>
                                         @elseif($cotizacion->proveedor)
                                             <div class="fw-semibold text-orange">
                                                 <i class="fas fa-truck me-1"></i> {{ $cotizacion->proveedor->persona->razon_social }}
                                             </div>
-                                            <div class="info-subtext">Proveedor • {{ $cotizacion->proveedor->persona->numero_documento ?? 'N/A' }}</div>
+                                            <div class="info-subtext">Proveedor <br> {{ $cotizacion->proveedor->persona->documento->tipo_documento ?? 'N/A' }}:
+                                                {{ $cotizacion->proveedor->persona->numero_documento ?? 'N/A' }}</div>
                                         @else
                                             <div class="fw-semibold text-muted">
                                                 <i class="fas fa-users me-1"></i> Público General
@@ -365,36 +352,7 @@
                                     <td class="text-center">
                                         <span class="fw-bold text-success">Bs. {{ number_format($cotizacion->total, 2) }}</span>
                                     </td>
-                                    <td class="text-center">
-                                        <div class="dropdown custom-dropdown">
-                                            @php
-                                                $estadoClases = [
-                                                    'pendiente' => 'badge-info',
-                                                    'venta_realizada' => 'badge-success',
-                                                    'compra_realizada' => 'badge-primary',
-                                                    'anulado' => 'badge-danger'
-                                                ];
-                                                $estadoTextos = [
-                                                    'pendiente' => 'Pendiente',
-                                                    'venta_realizada' => 'Venta Realizada',
-                                                    'compra_realizada' => 'Compra Realizada',
-                                                    'anulado' => 'Anulado'
-                                                ];
-                                                $clase = $estadoClases[$cotizacion->estado] ?? 'badge-secondary';
-                                                $texto = $estadoTextos[$cotizacion->estado] ?? ucfirst($cotizacion->estado);
-                                            @endphp
-                                            <button class="status-btn badge-pill {{ $clase }} dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                                {{ $texto }}
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
-                                                <li><a class="dropdown-item change-status" href="#" data-cotizacion-id="{{ $cotizacion->id }}" data-status="pendiente">Pendiente</a></li>
-                                                <li><a class="dropdown-item change-status" href="#" data-cotizacion-id="{{ $cotizacion->id }}" data-status="venta_realizada">Venta Realizada</a></li>
-                                                <li><a class="dropdown-item change-status" href="#" data-cotizacion-id="{{ $cotizacion->id }}" data-status="compra_realizada">Compra Realizada</a></li>
-                                                <li><hr class="dropdown-divider"></li>
-                                                <li><a class="dropdown-item change-status text-danger" href="#" data-cotizacion-id="{{ $cotizacion->id }}" data-status="anulado">Anulado</a></li>
-                                            </ul>
-                                        </div>
-                                    </td>
+                                    
                                     <td>
                                         <div class="btn-action-group">
                                             @can('mostrar-cotizacion')
@@ -403,7 +361,7 @@
                                             </button>
                                             @endcan
 
-                                            @if($cotizacion->estado == 'pendiente')
+                                            @if(!$cotizacion->venta_id && !$cotizacion->compra_id)
                                                 @can('editar-cotizacion')
                                                 <a href="{{ route('cotizaciones.edit', $cotizacion->id) }}" class="btn-icon-soft" title="Editar">
                                                     <i class="fas fa-pen"></i>
@@ -421,7 +379,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center py-5">
+                                    <td colspan="6" class="text-center py-5">
                                         <div class="text-muted">
                                             <i class="fas fa-inbox fa-3x mb-3 opacity-20"></i>
                                             <p>No se encontraron cotizaciones.</p>
@@ -442,12 +400,12 @@
                                     <span class="totals-value">{{ $cotizaciones->total() }}</span>
                                     <span class="totals-subtext">Total Cotizaciones</span>
                                 </td>
+                                
                                 <td class="text-center">
-                                    <span class="totals-value info">{{ $cotizaciones->where('estado', 'pendiente')->count() }}</span>
-                                    <span class="totals-subtext">Pendientes</span>
-                                </td>
-                                <td class="text-center">
-                                    <span class="totals-value success">Bs. {{ number_format($cotizaciones->whereIn('estado', ['venta_realizada', 'compra_realizada'])->sum('total'), 2) }}</span>
+                                    @php
+                                        $convertidasMonto = $cotizaciones->filter(fn($c) => $c->venta_id || $c->compra_id)->sum('total');
+                                    @endphp
+                                    <span class="totals-value success">Bs. {{ number_format($convertidasMonto, 2) }}</span>
                                     <span class="totals-subtext">Monto Convertido</span>
                                 </td>
                             </tr>
@@ -777,6 +735,8 @@
     function initializeEvents() {
         const searchInput = document.querySelector('input[name="busqueda"]');
         const perPageSelect = document.getElementById('per_page');
+        const dateFromInput = document.querySelector('input[name="date_from"]');
+        const dateToInput = document.querySelector('input[name="date_to"]');
         const sortButtons = document.querySelectorAll('.sort-btn');
 
         if (searchInput) {
@@ -792,6 +752,13 @@
 
         if (perPageSelect) {
             perPageSelect.addEventListener('change', () => fetchCotizaciones());
+        }
+
+        if (dateFromInput) {
+            dateFromInput.addEventListener('change', () => fetchCotizaciones());
+        }
+        if (dateToInput) {
+            dateToInput.addEventListener('change', () => fetchCotizaciones());
         }
 
         sortButtons.forEach(btn => {
@@ -815,12 +782,16 @@
     function fetchCotizaciones(url = null) {
         const searchInput = document.querySelector('input[name="busqueda"]');
         const perPageSelect = document.getElementById('per_page');
+        const dateFromInput = document.querySelector('input[name="date_from"]');
+        const dateToInput = document.querySelector('input[name="date_to"]');
 
         let fetchUrl = url;
         if (!fetchUrl) {
             const params = new URLSearchParams(window.location.search);
             if (searchInput) params.set('busqueda', searchInput.value);
             if (perPageSelect) params.set('per_page', perPageSelect.value);
+            if (dateFromInput) params.set('date_from', dateFromInput.value);
+            if (dateToInput) params.set('date_to', dateToInput.value);
             fetchUrl = `{{ route('cotizaciones.index') }}?${params.toString()}`;
         }
 
@@ -857,15 +828,6 @@
 
     // Clic en fila para seleccionar (Igual que en Ventas)
     document.addEventListener('click', function(e) {
-        // Cambio de estado inline (NUEVO)
-        if (e.target.classList.contains('change-status')) {
-            e.preventDefault();
-            const cotizacionId = e.target.dataset.cotizacionId;
-            const status = e.target.dataset.status;
-            updateCotizacionStatus(cotizacionId, status);
-            return;
-        }
-
         if (e.target.closest('tr[data-cotizacion-id]') &&
             !e.target.closest('.btn-action-group') &&
             !e.target.closest('.custom-checkbox') &&
@@ -1048,8 +1010,15 @@
                 if (pdfButton) pdfButton.href = currentPdfUrl || '#';
                 if (whatsappPhoneInput) whatsappPhoneInput.value = data.telefono || '';
 
+                // Compatibilidad: el campo `estado` ya no existe en la BD; se deriva de venta_id/compra_id.
+                if (data.cotizacion) {
+                    data.cotizacion.estado = (!data.cotizacion.venta_id && !data.cotizacion.compra_id)
+                        ? 'pendiente'
+                        : (data.cotizacion.venta_id ? 'venta_realizada' : 'compra_realizada');
+                }
+
                 // Botones de conversión solo si está pendiente
-                if (data.cotizacion && data.cotizacion.estado === 'pendiente') {
+                if (data.cotizacion && !data.cotizacion.venta_id && !data.cotizacion.compra_id) {
                     const tipoCotizacion = data.cotizacion.cliente_id ? 'venta' : (data.cotizacion.proveedor_id ? 'compra' : null);
 
                     let buttonsHtml = `
