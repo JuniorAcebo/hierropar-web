@@ -187,22 +187,66 @@
                 </div>
 
                 <div class="row mt-3 g-3 align-items-end">
-                    <div class="col-md-4">
-                        <label class="form-label">Método de Pago:</label>
-                        <select name="metodo_pago" id="metodo_pago" class="form-control form-control-sm selectpicker" required>
-                            <option value="efectivo" {{ ($venta->metodo_pago ?? 'efectivo') === 'efectivo' ? 'selected' : '' }}>Efectivo</option>
-                            <option value="debito" {{ ($venta->metodo_pago ?? '') === 'debito' ? 'selected' : '' }}>Débito</option>
-                            <option value="qr" {{ ($venta->metodo_pago ?? '') === 'qr' ? 'selected' : '' }}>QR</option>
-                            <option value="deposito" {{ ($venta->metodo_pago ?? '') === 'deposito' ? 'selected' : '' }}>Depósito (Banco Fisco)</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Monto Pagado (Bs.):</label>
-                        <input type="number" name="monto_pagado" id="monto_pagado" class="form-control form-control-sm" step="0.01" min="0" value="{{ number_format((float)($venta->monto_pagado ?? 0), 2, '.', '') }}">
+                    <div class="col-md-8">
+                        <label class="form-label">Pagos (puede ser mixto):</label>
+                        @php
+                            $pagos = $venta->pagos ?? collect();
+                            if ($pagos->isEmpty()) {
+                                $pagos = collect([(object)[
+                                    'metodo_pago' => $venta->metodo_pago ?? 'efectivo',
+                                    'monto' => $venta->monto_pagado ?? 0,
+                                ]]);
+                            }
+                        @endphp
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered mb-0" id="pagos_table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Método</th>
+                                        <th width="20%">Hora</th>
+                                        <th width="30%">Monto (Bs.)</th>
+                                        <th width="5%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($pagos as $pago)
+                                        <tr>
+                                            <td>
+                                                <select name="pagos_metodo[]" class="form-control form-control-sm">
+                                                    <option value="efectivo" {{ ($pago->metodo_pago ?? 'efectivo') === 'efectivo' ? 'selected' : '' }}>Efectivo</option>
+                                                    <option value="debito" {{ ($pago->metodo_pago ?? '') === 'debito' ? 'selected' : '' }}>Débito</option>
+                                                    <option value="qr" {{ ($pago->metodo_pago ?? '') === 'qr' ? 'selected' : '' }}>QR</option>
+                                                    <option value="deposito" {{ ($pago->metodo_pago ?? '') === 'deposito' ? 'selected' : '' }}>Depósito</option>
+                                                    <option value="otro" {{ ($pago->metodo_pago ?? '') === 'otro' ? 'selected' : '' }}>Otro</option>
+                                                </select>
+                                            </td>
+                                            <td class="text-muted">
+                                                {{ optional($pago->created_at)->format('H:i:s') ?? '--:--:--' }}
+                                            </td>
+                                            <td>
+                                                <input type="number" name="pagos_monto[]" class="form-control form-control-sm pago-monto" step="0.01" min="0"
+                                                    value="{{ number_format((float)($pago->monto ?? 0), 2, '.', '') }}">
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-link text-danger p-0 remove-pago" title="Quitar">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-end mt-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="addPago">
+                                <i class="fas fa-plus me-1"></i> Agregar pago
+                            </button>
+                        </div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Saldo/Deuda (Bs.):</label>
                         <input type="text" id="saldo_label" class="form-control form-control-sm bg-white" readonly value="{{ number_format((float)($venta->saldo ?? 0), 2, '.', '') }}">
+                        <div class="info-subtext mt-1">Pagado: Bs. <span id="pagado_label">0.00</span></div>
                     </div>
                 </div>
 
@@ -279,15 +323,51 @@
 
             function updatePagoFromTotal() {
                 const total = parseFloat($('#input_total').val()) || 0;
-                let pagado = parseFloat($('#monto_pagado').val());
-                if (isNaN(pagado)) pagado = total;
+                let pagado = 0;
+                $('.pago-monto').each(function() {
+                    pagado += parseFloat($(this).val()) || 0;
+                });
                 pagado = Math.max(0, Math.min(pagado, total));
                 const saldo = Math.max(0, total - pagado);
-                $('#monto_pagado').val(pagado.toFixed(2));
                 $('#saldo_label').val(saldo.toFixed(2));
+                $('#pagado_label').text(pagado.toFixed(2));
             }
 
-            $('#monto_pagado').on('input', updatePagoFromTotal);
+            $(document).on('input', '.pago-monto', updatePagoFromTotal);
+
+            $('#addPago').on('click', function() {
+                const row = `
+                    <tr>
+                        <td>
+                            <select name="pagos_metodo[]" class="form-control form-control-sm">
+                                <option value="efectivo">Efectivo</option>
+                                <option value="debito">Débito</option>
+                                <option value="qr">QR</option>
+                                <option value="deposito">Depósito</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </td>
+                        <td class="text-muted">--:--:--</td>
+                        <td><input type="number" name="pagos_monto[]" class="form-control form-control-sm pago-monto" step="0.01" min="0" value="0.00"></td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-link text-danger p-0 remove-pago" title="Quitar">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                $('#pagos_table tbody').append(row);
+            });
+
+            $(document).on('click', '.remove-pago', function() {
+                const tbody = $('#pagos_table tbody');
+                if (tbody.find('tr').length <= 1) {
+                    tbody.find('.pago-monto').val('0.00');
+                } else {
+                    $(this).closest('tr').remove();
+                }
+                updatePagoFromTotal();
+            });
 
             function setStockBadge(stock, ilimitado) {
                 const badge = $('#sel_stock_badge');
@@ -518,4 +598,3 @@
         });
     </script>
 @endpush
-

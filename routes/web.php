@@ -80,6 +80,7 @@ Route::prefix('admin')->group(function () {
             Route::put('/{venta}/estado-pago', [VentaController::class, 'actualizarEstadoPago'])->name('estado-pago');
             Route::put('/{venta}/estado-entrega', [VentaController::class, 'actualizarEstadoEntrega'])->name('estado-entrega');
             Route::get('/pdf/{id}', [VentaController::class, 'generarPdf'])->name('pdf');
+            Route::get('/reporte-caja', [VentaController::class, 'reporteCaja'])->name('reporte-caja');
         });
 
         // --- Gestion de Compras ---

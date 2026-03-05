@@ -57,6 +57,9 @@
                 <i class="fas fa-plus"></i> Nueva Venta
             </a>
             @endcan
+            <a href="{{ route('ventas.reporte-caja') }}" class="btn btn-outline-primary btn-sm ms-2" style="border-radius: 10px;">
+                <i class="fas fa-cash-register me-1"></i> Reporte Caja
+            </a>
         </div>
 
         <div class="card-clean">
@@ -242,6 +245,7 @@
                                                 'debito' => 'DÃ©bito',
                                                 'qr' => 'QR',
                                                 'deposito' => 'DepÃ³sito',
+                                                'mixto' => 'Mixto',
                                                 default => 'Efectivo',
                                             };
                                         @endphp
@@ -266,9 +270,9 @@
                                                 {{ $statusText }}
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
-                                                <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pagado">Pagado</a></li>
-                                                <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="parcial">Parcial...</a></li>
-                                                <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pendiente">Pendiente</a></li>
+                                                <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pagado" data-saldo="{{ (float)($venta->saldo ?? 0) }}">Pagado</a></li>
+                                                <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="parcial" data-saldo="{{ (float)($venta->saldo ?? 0) }}">Parcial...</a></li>
+                                                <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pendiente" data-saldo="{{ (float)($venta->saldo ?? 0) }}">Pendiente</a></li>
                                             </ul>
                                         </div>
                                     </td>
@@ -772,17 +776,21 @@
     // Clic en fila para seleccionar
     document.addEventListener('click', function(e) {
         // Status Change Hooks (Global Delegation)
-        if (e.target.classList.contains('change-status-pago')) {
+        const pagoLink = e.target.closest('.change-status-pago');
+        if (pagoLink) {
             e.preventDefault();
-            const ventaId = e.target.dataset.ventaId;
-            const status = e.target.dataset.status;
-            updateSaleStatus(ventaId, 'pago', status);
+            const ventaId = pagoLink.dataset.ventaId;
+            const status = pagoLink.dataset.status;
+            const saldo = parseFloat(pagoLink.dataset.saldo || '');
+            updateSaleStatus(ventaId, 'pago', status, isNaN(saldo) ? null : saldo);
             return;
         }
-        if (e.target.classList.contains('change-status-entrega')) {
+
+        const entregaLink = e.target.closest('.change-status-entrega');
+        if (entregaLink) {
             e.preventDefault();
-            const ventaId = e.target.dataset.ventaId;
-            const status = e.target.dataset.status;
+            const ventaId = entregaLink.dataset.ventaId;
+            const status = entregaLink.dataset.status;
             updateSaleStatus(ventaId, 'entrega', status);
             return;
         }
@@ -804,7 +812,7 @@
             const ventaId = button.dataset.ventaId;
 
             const modalElement = document.getElementById('viewVentaModal');
-            const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+            const modal = bootstrap.Modal.getOrCreateInstance(modalElement, { focus: false });
             modal.show();
 
             loadVentaDetails(ventaId);
@@ -908,21 +916,42 @@
         });
     }
 
-    async function updateSaleStatus(ventaId, type, status) {
+    async function updateSaleStatus(ventaId, type, status, saldoRestante = null) {
         const url = type === 'pago' ? `${ventasBaseUrl}/${ventaId}/estado-pago` : `${ventasBaseUrl}/${ventaId}/estado-entrega`;
         let data = type === 'pago' ? { estado_pago: status } : { estado_entrega: status };
 
         if (type === 'pago' && status === 'parcial') {
             const { value } = await Swal.fire({
                 title: 'Pago parcial',
-                input: 'number',
-                inputLabel: 'Monto pagado (Bs.)',
-                inputAttributes: { min: 0, step: 0.01 },
+                html: `
+                    <div class="text-start">
+                        ${saldoRestante !== null ? `<div class="mb-2 small text-muted">Saldo restante: <b>Bs. ${saldoRestante.toFixed(2)}</b></div>` : ''}
+                        <label class="form-label small">Método</label>
+                        <select id="sw_metodo" class="form-select form-select-sm mb-2">
+                            <option value="efectivo">Efectivo</option>
+                            <option value="debito">Débito</option>
+                            <option value="qr">QR</option>
+                            <option value="deposito">Depósito</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                        <label class="form-label small">Monto (Bs.)</label>
+                        <input id="sw_monto" type="number" class="form-control form-control-sm" min="0" step="0.01" value="0.00" />
+                    </div>
+                `,
                 showCancelButton: true,
                 confirmButtonText: 'Guardar',
+                preConfirm: () => ({
+                    metodo: document.getElementById('sw_metodo').value,
+                    monto: parseFloat(document.getElementById('sw_monto').value || 0),
+                }),
             });
             if (value === undefined) return;
-            data.monto_pagado = parseFloat(value || 0);
+            if (saldoRestante !== null && value.monto > saldoRestante) {
+                Swal.fire('Monto inválido', 'El monto no puede superar el saldo restante.', 'warning');
+                return;
+            }
+            data.metodo_pago = value.metodo;
+            data.monto_pagado = value.monto;
         }
 
         Swal.fire({

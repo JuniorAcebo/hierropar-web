@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Venta extends Model
 {
@@ -59,10 +60,17 @@ class Venta extends Model
         return $this->hasMany(DetalleVenta::class, 'venta_id');
     }
 
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(VentaPago::class, 'venta_id');
+    }
+
     public function getSaldoAttribute(): float
     {
         $total = (float) ($this->total ?? 0);
-        $pagado = (float) ($this->monto_pagado ?? 0);
+        $pagado = $this->relationLoaded('pagos')
+            ? (float) $this->pagos->sum('monto')
+            : (float) ($this->monto_pagado ?? 0);
         return max(0.0, $total - $pagado);
     }
 }

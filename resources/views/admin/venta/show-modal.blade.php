@@ -118,9 +118,9 @@
                         {{ $statusTxt }}
                     </button>
                     <ul class="dropdown-menu w-100 shadow-sm border-0">
-                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pagado">Pagado</a></li>
-                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="parcial">Parcial...</a></li>
-                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pendiente">Pendiente</a></li>
+                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pagado" data-saldo="{{ (float)($venta->saldo ?? 0) }}">Pagado</a></li>
+                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="parcial" data-saldo="{{ (float)($venta->saldo ?? 0) }}">Parcial...</a></li>
+                        <li><a class="dropdown-item change-status-pago" href="#" data-venta-id="{{ $venta->id }}" data-status="pendiente" data-saldo="{{ (float)($venta->saldo ?? 0) }}">Pendiente</a></li>
                     </ul>
                 </div>
             </div>
@@ -145,6 +145,34 @@
                 <div class="ps-2 border-start border-3 border-primary">
                     <div class="extra-small text-muted">Pagado: <span class="fw-bold text-dark">Bs. {{ number_format((float)($venta->monto_pagado ?? 0), 2) }}</span></div>
                     <div class="extra-small text-muted">Saldo: <span class="fw-bold text-danger">Bs. {{ number_format((float)($venta->saldo ?? 0), 2) }}</span></div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="label-title mb-2">Movimientos de Pago</div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="20%">Hora</th>
+                                <th>Método</th>
+                                <th class="text-end" width="25%">Monto (Bs.)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse(($venta->pagos ?? collect())->sortBy('created_at') as $pago)
+                                <tr>
+                                    <td class="text-muted">{{ optional($pago->created_at)->format('H:i:s') ?? '--:--:--' }}</td>
+                                    <td>{{ strtoupper($pago->metodo_pago ?? 'efectivo') }}</td>
+                                    <td class="text-end fw-semibold">{{ number_format((float)($pago->monto ?? 0), 2) }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-2">Sin movimientos</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

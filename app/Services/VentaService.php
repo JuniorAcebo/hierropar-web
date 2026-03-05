@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Venta;
+use App\Models\VentaPago;
 use App\Models\InventarioAlmacen;
 use Illuminate\Support\Facades\DB;
 use Exception;
@@ -129,7 +130,7 @@ class VentaService
                 'fecha_hora' => $data['fecha_hora'] ?? now(),
                 'numero_comprobante' => $data['numero_comprobante'],
                 'total' => 0,
-                'metodo_pago' => $data['metodo_pago'] ?? 'efectivo',
+                'metodo_pago' => 'efectivo',
                 'monto_pagado' => 0,
                 'estado_pago' => 'pendiente',
                 'estado_entrega' => 'por_entregar',
@@ -161,17 +162,22 @@ class VentaService
                 $total += ($cantidad * $precioVenta) - $descuento;
             }
 
-            $montoPagado = (float) ($data['monto_pagado'] ?? 0);
-            if (($data['estado_pago'] ?? '') === 'pagado') {
-                $montoPagado = $total;
+            $payments = $this->normalizePayments($data, (float) $total);
+            if (!empty($payments)) {
+                $venta->pagos()->createMany($payments);
             }
-            $montoPagado = max(0.0, min($montoPagado, (float) $total));
+
+            $montoPagado = (float) $venta->pagos()->sum('monto');
             $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
+            $metodoPago = $venta->pagos()->distinct()->count('metodo_pago') > 1
+                ? 'mixto'
+                : ($venta->pagos()->value('metodo_pago') ?? 'efectivo');
 
             $venta->update([
                 'total' => $total,
                 'monto_pagado' => $montoPagado,
                 'estado_pago' => $estadoPago,
+                'metodo_pago' => $metodoPago,
             ]);
 
             $this->procesarSalidaStock($venta);
@@ -236,20 +242,23 @@ class VentaService
             }
 
             // 6. Ajustar pagos y estados
-            $montoPagado = (float) ($data['monto_pagado'] ?? $venta->monto_pagado);
-            if (($data['estado_pago'] ?? '') === 'pagado') {
-                $montoPagado = $total;
-            } elseif (($data['estado_pago'] ?? '') === 'pendiente') {
-                $montoPagado = 0;
+            $venta->pagos()->delete();
+            $payments = $this->normalizePayments($data, (float) $total);
+            if (!empty($payments)) {
+                $venta->pagos()->createMany($payments);
             }
-            $montoPagado = max(0.0, min($montoPagado, (float) $total));
+
+            $montoPagado = (float) $venta->pagos()->sum('monto');
             $estadoPago = $montoPagado >= (float) $total ? 'pagado' : ($montoPagado > 0 ? 'parcial' : 'pendiente');
+            $metodoPago = $venta->pagos()->distinct()->count('metodo_pago') > 1
+                ? 'mixto'
+                : ($venta->pagos()->value('metodo_pago') ?? 'efectivo');
 
             $venta->update([
                 'total' => $total,
-                'metodo_pago' => $data['metodo_pago'] ?? $venta->metodo_pago,
                 'monto_pagado' => $montoPagado,
                 'estado_pago' => $estadoPago,
+                'metodo_pago' => $metodoPago,
             ]);
 
             // 7. Salida stock nuevamente
@@ -258,5 +267,35 @@ class VentaService
 
             return $venta;
         });
+    }
+
+    private function normalizePayments(array $data, float $total): array
+    {
+        $metodos = $data['pagos_metodo'] ?? [];
+        $montos = $data['pagos_monto'] ?? [];
+
+        // Compatibilidad con input anterior (monto_pagado/metodo_pago)
+        if (empty($metodos) && isset($data['monto_pagado'])) {
+            $metodos = [$data['metodo_pago'] ?? 'efectivo'];
+            $montos = [$data['monto_pagado']];
+        }
+
+        $payments = [];
+        $sum = 0.0;
+        foreach ($metodos as $i => $metodo) {
+            $monto = (float) ($montos[$i] ?? 0);
+            if ($monto <= 0) continue;
+            $payments[] = [
+                'metodo_pago' => $metodo ?: 'efectivo',
+                'monto' => $monto,
+            ];
+            $sum += $monto;
+        }
+
+        if ($sum - $total > 0.01) {
+            throw new Exception('La suma de pagos no puede ser mayor al total de la venta.');
+        }
+
+        return $payments;
     }
 }

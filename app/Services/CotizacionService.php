@@ -100,6 +100,12 @@ class CotizacionService
     public function convertirAVenta(Cotizacion $cotizacion, array $extraData = [])
     {
         return DB::transaction(function () use ($cotizacion, $extraData) {
+            $cotizacion->loadMissing(['detalles.producto']);
+
+            if ($cotizacion->detalles->isEmpty()) {
+                throw new Exception("La cotización no tiene productos para convertir.");
+            }
+
             if (!empty($cotizacion->venta_id) || !empty($cotizacion->compra_id)) {
                 throw new Exception("Esta cotización ya fue procesada.");
             }
@@ -138,6 +144,12 @@ class CotizacionService
     public function convertirACompra(Cotizacion $cotizacion, array $extraData = [])
     {
         return DB::transaction(function () use ($cotizacion, $extraData) {
+            $cotizacion->loadMissing(['detalles.producto']);
+
+            if ($cotizacion->detalles->isEmpty()) {
+                throw new Exception("La cotización no tiene productos para convertir.");
+            }
+
             if (!empty($cotizacion->venta_id) || !empty($cotizacion->compra_id)) {
                 throw new Exception("Esta cotización ya fue procesada.");
             }
@@ -163,6 +175,12 @@ class CotizacionService
 
             if (empty($dataCompra['proveedor_id'])) {
                 throw new Exception("Debe asignar un proveedor para convertir a compra.");
+            }
+
+            foreach ($cotizacion->detalles as $detalle) {
+                if (!$detalle->producto) {
+                    throw new Exception("Hay productos eliminados o inválidos en la cotización. Edítala y corrige los ítems.");
+                }
             }
 
             $compraService = app(CompraService::class);

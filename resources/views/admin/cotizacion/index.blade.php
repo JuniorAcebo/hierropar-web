@@ -1098,11 +1098,14 @@
 
                 fetch(`${cotizacionBaseUrl}/${id}/convertir-${action}`, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'Content-Type': 'application/json',
                         'Accept': 'application/json'
-                    }
+                    },
+                    body: JSON.stringify({})
                 })
                 .then(res => res.json())
                 .then(data => {
