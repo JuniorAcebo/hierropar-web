@@ -27,7 +27,7 @@ class CompraController extends Controller
 
         $compra = Compra::with([
             'comprobante',
-            'proveedor.persona',
+            'proveedor.persona.documento',
             'detalles.producto',
             'almacen',
             'user'
@@ -49,7 +49,7 @@ class CompraController extends Controller
     {
         $compra->load([
             'comprobante',
-            'proveedor.persona',
+            'proveedor.persona.documento',
             'detalles.producto',
             'almacen',
             'user'
@@ -301,6 +301,7 @@ class CompraController extends Controller
         }
 
         $compra->load(['comprobante', 'proveedor.persona', 'detalles.producto', 'almacen', 'user']);
+        $compra->loadMissing(['proveedor.persona.documento']);
 
         if (request()->ajax() || request()->wantsJson()) {
             $telefono = optional(optional($compra->proveedor)->persona)->telefono;

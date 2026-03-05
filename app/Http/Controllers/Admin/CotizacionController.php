@@ -15,6 +15,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\URL;
 
 class CotizacionController extends Controller
 {
@@ -40,6 +41,7 @@ class CotizacionController extends Controller
         $direction = $request->get('direction', 'desc');
 
         $query = Cotizacion::with(['cliente.persona', 'proveedor.persona', 'user', 'almacen']);
+        $query->with(['cliente.persona.documento', 'proveedor.persona.documento']);
 
         $query = $this->filterByUserAlmacen($query);
 
@@ -85,11 +87,12 @@ class CotizacionController extends Controller
     {
         try {
             $validated = $request->validate([
+                'tipo' => ['required', 'in:venta,compra'],
                 'fecha_hora' => ['nullable', 'date'],
                 'numero_cotizacion' => ['required', 'string', 'max:50'],
                 'almacen_id' => ['required', 'integer'],
-                'cliente_id' => ['nullable', 'integer'],
-                'proveedor_id' => ['nullable', 'integer'],
+                'cliente_id' => ['nullable', 'integer', 'exists:clientes,id', 'required_if:tipo,venta', 'prohibited_if:tipo,compra'],
+                'proveedor_id' => ['nullable', 'integer', 'exists:proveedores,id', 'required_if:tipo,compra', 'prohibited_if:tipo,venta'],
                 'vencimiento' => ['nullable', 'date'],
                 'nota_personal' => ['nullable', 'string'],
                 'nota_cliente' => ['nullable', 'string'],
@@ -99,11 +102,14 @@ class CotizacionController extends Controller
                 'arraydescuento' => ['nullable', 'array'],
             ]);
 
-            if (!empty($validated['cliente_id']) && !empty($validated['proveedor_id'])) {
-                return back()->withInput()->with('error', 'Seleccione solo Cliente o Proveedor (no ambos).');
+            if (($validated['tipo'] ?? null) === 'venta') {
+                $validated['proveedor_id'] = null;
+            }
+            if (($validated['tipo'] ?? null) === 'compra') {
+                $validated['cliente_id'] = null;
             }
 
-            $this->cotizacionService->crearCotizacion($request->all(), auth()->id());
+            $this->cotizacionService->crearCotizacion($validated, auth()->id());
             return redirect()->route('cotizaciones.index')->with('success', 'Cotización creada exitosamente');
         } catch (Exception $e) {
             return back()->withInput()->with('error', 'Error: ' . $e->getMessage());
@@ -112,18 +118,43 @@ class CotizacionController extends Controller
 
     public function show(Cotizacion $cotizacion)
     {
-        $cotizacion->load(['cliente.persona', 'proveedor.persona', 'user', 'almacen', 'detalles.producto']);
+        $cotizacion->load(['cliente.persona.documento', 'proveedor.persona.documento', 'user', 'almacen', 'detalles.producto']);
         
         if (request()->ajax() || request()->wantsJson()) {
+            $telefono = optional(optional($cotizacion->cliente)->persona)->telefono
+                ?: optional(optional($cotizacion->proveedor)->persona)->telefono;
+
+            $pdfUrl = route('cotizaciones.pdf', ['cotizacion' => $cotizacion->id]);
+            $facturaUrl = URL::temporarySignedRoute(
+                'facturas.cotizaciones',
+                now()->addDays(30),
+                ['cotizacion' => $cotizacion->id]
+            );
+
             return response()->json([
                 'success' => true,
                 'html' => view('admin.cotizacion.show-modal', compact('cotizacion'))->render(),
                 'cotizacion' => $cotizacion,
-                'pdf_url' => route('cotizaciones.pdf', ['cotizacion' => $cotizacion->id])
+                'telefono' => $telefono,
+                'pdf_url' => $pdfUrl,
+                'factura_url' => $facturaUrl,
             ]);
         }
 
         return view('admin.cotizacion.show', compact('cotizacion'));
+    }
+
+    public function facturaPublica(Cotizacion $cotizacion, Request $request)
+    {
+        $cotizacion->load(['cliente.persona.documento', 'proveedor.persona.documento', 'user', 'almacen', 'detalles.producto']);
+        $pdf = Pdf::loadView('admin.cotizacion.pdf', compact('cotizacion'));
+        $fileName = "COT-{$cotizacion->numero_cotizacion}.pdf";
+
+        if ($request->boolean('download')) {
+            return $pdf->download($fileName);
+        }
+
+        return $pdf->stream($fileName);
     }
 
     public function edit(Cotizacion $cotizacion)
@@ -141,11 +172,12 @@ class CotizacionController extends Controller
     {
         try {
             $validated = $request->validate([
+                'tipo' => ['required', 'in:venta,compra'],
                 'fecha_hora' => ['nullable', 'date'],
                 'numero_cotizacion' => ['required', 'string', 'max:50'],
                 'almacen_id' => ['required', 'integer'],
-                'cliente_id' => ['nullable', 'integer'],
-                'proveedor_id' => ['nullable', 'integer'],
+                'cliente_id' => ['nullable', 'integer', 'exists:clientes,id', 'required_if:tipo,venta', 'prohibited_if:tipo,compra'],
+                'proveedor_id' => ['nullable', 'integer', 'exists:proveedores,id', 'required_if:tipo,compra', 'prohibited_if:tipo,venta'],
                 'vencimiento' => ['nullable', 'date'],
                 'nota_personal' => ['nullable', 'string'],
                 'nota_cliente' => ['nullable', 'string'],
@@ -155,11 +187,14 @@ class CotizacionController extends Controller
                 'arraydescuento' => ['nullable', 'array'],
             ]);
 
-            if (!empty($validated['cliente_id']) && !empty($validated['proveedor_id'])) {
-                return back()->withInput()->with('error', 'Seleccione solo Cliente o Proveedor (no ambos).');
+            if (($validated['tipo'] ?? null) === 'venta') {
+                $validated['proveedor_id'] = null;
+            }
+            if (($validated['tipo'] ?? null) === 'compra') {
+                $validated['cliente_id'] = null;
             }
 
-            $this->cotizacionService->actualizarCotizacion($cotizacion, $request->all());
+            $this->cotizacionService->actualizarCotizacion($cotizacion, $validated);
             return redirect()->route('cotizaciones.index')->with('success', 'Cotización actualizada exitosamente');
         } catch (Exception $e) {
             return back()->withInput()->with('error', 'Error: ' . $e->getMessage());
@@ -199,7 +234,7 @@ class CotizacionController extends Controller
 
     public function generarPdf(Cotizacion $cotizacion)
     {
-        $cotizacion->load(['cliente.persona', 'proveedor.persona', 'user', 'almacen', 'detalles.producto']);
+        $cotizacion->load(['cliente.persona.documento', 'proveedor.persona.documento', 'user', 'almacen', 'detalles.producto']);
         $pdf = Pdf::loadView('admin.cotizacion.pdf', compact('cotizacion'));
         return $pdf->stream("COT-{$cotizacion->numero_cotizacion}.pdf");
     }

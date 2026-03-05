@@ -154,7 +154,7 @@ class VentaController extends Controller
     {
         $venta = Venta::with([
             'comprobante',
-            'cliente.persona',
+            'cliente.persona.documento',
             'user',
             'detalles.producto',
             'almacen'
@@ -176,7 +176,7 @@ class VentaController extends Controller
     {
         $venta->load([
             'comprobante',
-            'cliente.persona',
+            'cliente.persona.documento',
             'user',
             'detalles.producto',
             'almacen'
@@ -300,6 +300,7 @@ class VentaController extends Controller
         }
 
         $venta->load(['comprobante', 'cliente.persona', 'user', 'detalles.producto.tipounidad', 'almacen']);
+        $venta->loadMissing(['cliente.persona.documento']);
 
         if (request()->ajax() || request()->wantsJson()) {
             $telefono = optional(optional($venta->cliente)->persona)->telefono;

@@ -73,10 +73,16 @@
                 <div class="label-title">Tercero</div>
                 @if($cotizacion->cliente)
                     <div class="value-text text-primary"><i class="fas fa-user me-1"></i> {{ $cotizacion->cliente->persona->razon_social }}</div>
-                    <small class="text-muted">Cliente ({{ $cotizacion->cliente->persona->numero_documento }})</small>
+                    <small class="text-muted">{{ $cotizacion->cliente->persona->documento->tipo_documento ?? 'N/A' }}: {{ $cotizacion->cliente->persona->numero_documento ?? 'N/A' }}</small>
+                    <br>
+                    <small class="text-muted">Teléfono: {{ $cotizacion->cliente->persona->telefono ?? 'N/A' }}</small>
                 @elseif($cotizacion->proveedor)
                     <div class="value-text text-orange"><i class="fas fa-truck me-1"></i> {{ $cotizacion->proveedor->persona->razon_social }}</div>
-                    <small class="text-muted">Proveedor ({{ $cotizacion->proveedor->persona->numero_documento }})</small>
+                    <small class="text-muted">Documento: {{ $cotizacion->proveedor->persona->documento->tipo_documento ?? 'N/A' }}</small>
+                    <br>
+                    <small class="text-muted">Nro Documento: {{ $cotizacion->proveedor->persona->numero_documento ?? 'N/A' }}</small>
+                    <br>
+                    <small class="text-muted">Teléfono: {{ $cotizacion->proveedor->persona->telefono ?? 'N/A' }}</small>
                 @else
                     <div class="value-text text-muted">Público General</div>
                 @endif

@@ -70,7 +70,9 @@
             <div class="col-md-3">
                 <div class="label-title">Cliente</div>
                 <div class="value-text">{{ $venta->cliente->persona->razon_social }}</div>
-                <small class="text-muted">{{ $venta->cliente->persona->tipo_documento }}: {{ $venta->cliente->persona->numero_documento }}</small>
+                <small class="text-muted">{{ $venta->cliente->persona->documento->tipo_documento ?? 'N/A' }}: {{ $venta->cliente->persona->numero_documento ?? 'N/A' }}</small>
+                <br>
+                <small class="text-muted">Teléfono: {{ $venta->cliente->persona->telefono ?? 'N/A' }}</small>
             </div>
             <div class="col-md-3">
                 <div class="label-title">Sucursal</div>

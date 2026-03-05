@@ -115,7 +115,8 @@
                 <td width="33%">
                     <div class="label">PROVEEDOR</div>
                     <div class="value">{{ $compra->proveedor->persona->razon_social }}</div>
-                    <div style="font-size:9px;">{{ $compra->proveedor->persona->tipo_documento }} {{ $compra->proveedor->persona->numero_documento }}</div>
+                    <div style="font-size:9px;">{{ $compra->proveedor->persona->documento->tipo_documento ?? 'N/A' }}: {{ $compra->proveedor->persona->numero_documento ?? 'N/A' }}</div>
+                    <div style="font-size:9px;">Teléfono: {{ $compra->proveedor->persona->telefono ?? 'N/A' }}</div>
                 </td>
                 <td width="33%">
                     <div class="label">SUCURSAL</div>

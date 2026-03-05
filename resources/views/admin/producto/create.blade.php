@@ -173,7 +173,7 @@
 function generarCodigo() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let code = 'PROD-';
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 10; i++) {
         code += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     document.getElementById('codigo').value = code;
@@ -185,4 +185,3 @@ $(function () {
 });
 </script>
 @endpush
-

@@ -44,9 +44,12 @@
                     <div class="label">DIRIGIDO A:</div>
                     @if($cotizacion->cliente)
                         <div class="value">{{ $cotizacion->cliente->persona->razon_social }} (Cliente)</div>
-                        <div style="font-size:9px;">NIT/CI: {{ $cotizacion->cliente->persona->numero_documento }}</div>
+                        <div style="font-size:9px;">{{ $cotizacion->cliente->persona->documento->tipo_documento ?? 'N/A' }}: {{ $cotizacion->cliente->persona->numero_documento ?? 'N/A' }}</div>
+                        <div style="font-size:9px;">Teléfono: {{ $cotizacion->cliente->persona->telefono ?? 'N/A' }}</div>
                     @elseif($cotizacion->proveedor)
                         <div class="value">{{ $cotizacion->proveedor->persona->razon_social }} (Proveedor)</div>
+                        <div style="font-size:9px;">{{ $cotizacion->proveedor->persona->documento->tipo_documento ?? 'N/A' }}: {{ $cotizacion->proveedor->persona->numero_documento ?? 'N/A' }}</div>
+                        <div style="font-size:9px;">Teléfono: {{ $cotizacion->proveedor->persona->telefono ?? 'N/A' }}</div>
                     @else
                         <div class="value">Público General</div>
                     @endif

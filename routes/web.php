@@ -40,6 +40,7 @@ Route::prefix('admin')->group(function () {
     Route::middleware('signed')->group(function () {
         Route::get('/facturas/ventas/{venta}', [VentaController::class, 'facturaPublica'])->name('facturas.ventas');
         Route::get('/facturas/compras/{compra}', [CompraController::class, 'facturaPublica'])->name('facturas.compras');
+        Route::get('/facturas/cotizaciones/{cotizacion}', [CotizacionController::class, 'facturaPublica'])->name('facturas.cotizaciones');
     });
 
     Route::middleware('auth')->group(function () {

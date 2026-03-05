@@ -71,7 +71,9 @@
             <div class="col-md-3">
                 <div class="label-title">Proveedor</div>
                 <div class="value-text">{{ $compra->proveedor->persona->razon_social }}</div>
-                <small class="text-muted">{{ $compra->proveedor->persona->tipo_documento }}: {{ $compra->proveedor->persona->numero_documento }}</small>
+                <small class="text-muted">{{ $compra->proveedor->persona->documento->tipo_documento ?? 'N/A' }}: {{ $compra->proveedor->persona->numero_documento ?? 'N/A' }}</small>
+                <br>
+                <small class="text-muted">Teléfono: {{ $compra->proveedor->persona->telefono ?? 'N/A' }}</small>
             </div>
             <div class="col-md-3">
                 <div class="label-title">Sucursal</div>

@@ -487,9 +487,20 @@
                         <p class="mt-2 text-muted small">Cargando información...</p>
                     </div>
                 </div>
-                <div class="modal-footer border-0 d-flex justify-content-between" id="modalFooter">
-                    <div id="conversionButtons"></div>
-                    <div class="d-flex gap-2">
+                <div class="modal-footer border-0 d-flex flex-wrap gap-2 justify-content-between" id="modalFooter">
+                    <div id="conversionButtons" class="d-flex flex-wrap gap-2"></div>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <a href="#" id="pdfButton" class="btn btn-outline-danger btn-sm px-4" target="_blank">
+                            <i class="fas fa-file-pdf me-1"></i> Descargar PDF
+                        </a>
+
+                        <input type="text" id="whatsappPhoneInput" class="form-control form-control-sm" style="width: 220px;"
+                            placeholder="WhatsApp (ej: 5917xxxxxxx)">
+
+                        <button id="whatsappButton" type="button" class="btn btn-success btn-sm px-4" title="Enviar link por WhatsApp">
+                            <i class="fab fa-whatsapp me-1"></i> WhatsApp
+                        </button>
+
                         <button type="button" id="printButton" class="btn btn-outline-dark btn-sm px-4" title="Imprimir cotización">
                             <i class="fas fa-print me-1"></i> Imprimir
                         </button>
@@ -572,6 +583,23 @@
     const tableContainer = document.getElementById('table-container');
     let selectedCotizaciones = new Set();
     let debounceTimer;
+    let currentFacturaUrl = null;
+
+    function normalizeWhatsappPhone(raw) {
+        if (!raw) return '';
+        let digits = String(raw).replace(/\D/g, '');
+        if (!digits) return '';
+
+        // Si el número parece local (7-8 dígitos), prefijar Bolivia (591) por defecto.
+        if (digits.length <= 8) digits = `591${digits}`;
+
+        return digits;
+    }
+
+    function openWhatsappWithText(phoneDigits, text) {
+        const url = `https://wa.me/${phoneDigits}?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
 
     // Sistema de selección (Idéntico al de Ventas)
     function initializeSelectionSystem() {
@@ -909,6 +937,9 @@
     const viewModal = new bootstrap.Modal(viewModalElement);
     const modalContent = document.getElementById('modalCotizacionContent');
     const conversionButtons = document.getElementById('conversionButtons');
+    const pdfButton = document.getElementById('pdfButton');
+    const whatsappPhoneInput = document.getElementById('whatsappPhoneInput');
+    const whatsappButton = document.getElementById('whatsappButton');
     const printButton = document.getElementById('printButton');
     const printFrame = document.getElementById('printFrame');
     let currentPdfUrl = null;
@@ -927,6 +958,34 @@
             }
         };
     });
+
+    if (whatsappButton) {
+        whatsappButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            const phoneDigits = normalizeWhatsappPhone(whatsappPhoneInput ? whatsappPhoneInput.value : '');
+            const facturaUrl = currentFacturaUrl || currentPdfUrl || '';
+
+            if (!phoneDigits) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Número requerido',
+                    text: 'Escribe un número de WhatsApp (ej: 5917xxxxxxx).'
+                });
+                return;
+            }
+
+            if (!facturaUrl) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Sin link',
+                    text: 'No se pudo obtener el link de la cotización.'
+                });
+                return;
+            }
+
+            openWhatsappWithText(phoneDigits, facturaUrl);
+        });
+    }
 
     document.body.addEventListener('click', function(e) {
         // Ver detalles
@@ -961,6 +1020,9 @@
         `;
         conversionButtons.innerHTML = '';
         currentPdfUrl = null;
+        currentFacturaUrl = null;
+        if (pdfButton) pdfButton.href = '#';
+        if (whatsappPhoneInput) whatsappPhoneInput.value = '';
         viewModal.show();
 
         fetch(`${cotizacionBaseUrl}/${id}`, {
@@ -982,20 +1044,44 @@
             if (data.success) {
                 modalContent.innerHTML = data.html;
                 currentPdfUrl = data.pdf_url || null;
+                currentFacturaUrl = data.factura_url || null;
+                if (pdfButton) pdfButton.href = currentPdfUrl || '#';
+                if (whatsappPhoneInput) whatsappPhoneInput.value = data.telefono || '';
 
                 // Botones de conversión solo si está pendiente
                 if (data.cotizacion && data.cotizacion.estado === 'pendiente') {
-                    conversionButtons.innerHTML = `
+                    const tipoCotizacion = data.cotizacion.cliente_id ? 'venta' : (data.cotizacion.proveedor_id ? 'compra' : null);
+
+                    let buttonsHtml = `
                         <a href="${cotizacionBaseUrl}/${id}/edit" class="btn btn-warning btn-sm me-2 text-white">
                             <i class="fas fa-pen me-1"></i> Editar
                         </a>
-                        <button class="btn btn-success btn-sm me-2 btn-convertir" data-id="${id}" data-action="venta">
-                            <i class="fas fa-shopping-cart me-1"></i> Convertir en Venta
-                        </button>
-                        <button class="btn btn-primary btn-sm btn-convertir" data-id="${id}" data-action="compra">
-                            <i class="fas fa-shopping-bag me-1"></i> Convertir en Compra
-                        </button>
                     `;
+
+                    if (tipoCotizacion === 'venta') {
+                        buttonsHtml += `
+                            <button class="btn btn-success btn-sm me-2 btn-convertir" data-id="${id}" data-action="venta">
+                                <i class="fas fa-shopping-cart me-1"></i> Convertir en Venta
+                            </button>
+                        `;
+                    } else if (tipoCotizacion === 'compra') {
+                        buttonsHtml += `
+                            <button class="btn btn-primary btn-sm btn-convertir" data-id="${id}" data-action="compra">
+                                <i class="fas fa-shopping-bag me-1"></i> Convertir en Compra
+                            </button>
+                        `;
+                    } else {
+                        buttonsHtml += `
+                            <button class="btn btn-success btn-sm me-2 btn-convertir" data-id="${id}" data-action="venta">
+                                <i class="fas fa-shopping-cart me-1"></i> Convertir en Venta
+                            </button>
+                            <button class="btn btn-primary btn-sm btn-convertir" data-id="${id}" data-action="compra">
+                                <i class="fas fa-shopping-bag me-1"></i> Convertir en Compra
+                            </button>
+                        `;
+                    }
+
+                    conversionButtons.innerHTML = buttonsHtml;
                 } else {
                     conversionButtons.innerHTML = `
                         <span class="badge bg-secondary">Cotización ${data.cotizacion.estado.replace('_', ' ')}</span>

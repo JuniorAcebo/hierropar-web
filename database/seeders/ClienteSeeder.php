@@ -19,7 +19,6 @@ class ClienteSeeder extends Seeder
             [
                 'razon_social' => 'Cliente General',
                 'direccion'    => 'Sin dirección',
-                'telefono'     => '00000000',
                 'tipo_persona' => 'natural',
                 'estado'       => true,
             ]
@@ -31,7 +30,7 @@ class ClienteSeeder extends Seeder
                 'persona_id' => $persona->id,
             ],
             [
-                'grupo_cliente_id' => 3,
+                'grupo_cliente_id' => 1,
             ]
         );
     }

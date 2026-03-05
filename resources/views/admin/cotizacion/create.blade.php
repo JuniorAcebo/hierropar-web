@@ -57,42 +57,59 @@
                         <div class="section-title"><i class="fas fa-info-circle"></i> Datos de la transacción</div>
                         <div class="row g-4">
                             <div class="col-md-4">
-                                <label class="form-label">Cliente (Opcional)</label>
-                                <select name="cliente_id" id="cliente_id" class="form-control selectpicker" data-live-search="true" data-style="btn-outline-secondary btn-sm" title="Seleccione un cliente">
-                                    <option value="">Ninguno</option>
-                                    @foreach ($clientes as $item)
-                                        <option value="{{ $item->id }}">{{ $item->persona->razon_social }}</option>
-                                    @endforeach
-                                </select>
+                                <label class="form-label">Tipo de cotizacion</label>
+                                <div class="btn-group w-100" role="group" aria-label="Tipo de cotizacion">
+                                    <input type="radio" class="btn-check" name="tipo" id="tipo_venta" value="venta" {{ old('tipo', 'venta') === 'venta' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-success btn-sm" for="tipo_venta">
+                                        <i class="fas fa-shopping-cart me-1"></i> Venta
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="tipo" id="tipo_compra" value="compra" {{ old('tipo', 'venta') === 'compra' ? 'checked' : '' }}>
+                                    <label class="btn btn-outline-primary btn-sm" for="tipo_compra">
+                                        <i class="fas fa-shopping-bag me-1"></i> Compra
+                                    </label>
+                                </div>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Proveedor (Opcional)</label>
-                                <select name="proveedor_id" id="proveedor_id" class="form-control selectpicker" data-live-search="true" data-style="btn-outline-secondary btn-sm" title="Seleccione un proveedor">
-                                    <option value="">Ninguno</option>
-                                    @foreach ($proveedores as $item)
-                                        <option value="{{ $item->id }}">{{ $item->persona->razon_social }}</option>
-                                    @endforeach
-                                </select>
+                                <div id="clienteWrapper">
+                                    <label class="form-label">Cliente</label>
+                                    <select name="cliente_id" id="cliente_id" class="form-control selectpicker" data-live-search="true" data-style="btn-outline-secondary btn-sm" title="Seleccione un cliente">
+                                        <option value=""></option>
+                                        @foreach ($clientes as $item)
+                                            <option value="{{ $item->id }}" {{ old('cliente_id') == $item->id ? 'selected' : '' }}>{{ $item->persona->razon_social }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                <div id="proveedorWrapper" class="d-none">
+                                    <label class="form-label">Proveedor</label>
+                                    <select name="proveedor_id" id="proveedor_id" class="form-control selectpicker" data-live-search="true" data-style="btn-outline-secondary btn-sm" title="Seleccione un proveedor">
+                                        <option value=""></option>
+                                        @foreach ($proveedores as $item)
+                                            <option value="{{ $item->id }}" {{ old('proveedor_id') == $item->id ? 'selected' : '' }}>{{ $item->persona->razon_social }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Sucursal / Almacén</label>
                                 <select name="almacen_id" class="form-control selectpicker" data-style="btn-outline-secondary btn-sm" required>
                                     @foreach ($almacenes as $item)
-                                        <option value="{{ $item->id }}">{{ $item->nombre }}</option>
+                                        <option value="{{ $item->id }}" {{ old('almacen_id') == $item->id ? 'selected' : '' }}>{{ $item->nombre }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Número de Cotización</label>
-                                <input type="text" name="numero_cotizacion" class="form-control form-control-sm h-40" value="{{ $nextCotizacionNumber }}" required style="border-radius: 8px;">
+                                <input type="text" name="numero_cotizacion" class="form-control form-control-sm h-40" value="{{ old('numero_cotizacion', $nextCotizacionNumber) }}" required style="border-radius: 8px;">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Fecha de Emisión</label>
-                                <input type="datetime-local" name="fecha_hora" class="form-control form-control-sm h-40" value="{{ now()->format('Y-m-d\TH:i') }}" required style="border-radius: 8px;">
+                                <input type="datetime-local" name="fecha_hora" class="form-control form-control-sm h-40" value="{{ old('fecha_hora', now()->format('Y-m-d\\TH:i')) }}" required style="border-radius: 8px;">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Vencimiento</label>
-                                <input type="date" name="vencimiento" class="form-control form-control-sm h-40" value="{{ now()->addDays(7)->format('Y-m-d') }}" style="border-radius: 8px;">
+                                <input type="date" name="vencimiento" class="form-control form-control-sm h-40" value="{{ old('vencimiento', now()->addDays(7)->format('Y-m-d')) }}" style="border-radius: 8px;">
                             </div>
                         </div>
                     </div>
@@ -170,11 +187,11 @@
                         <div class="row mt-3 g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Nota Interna (Privada):</label>
-                                <textarea name="nota_personal" class="form-control form-control-sm" rows="2"></textarea>
+                                <textarea name="nota_personal" class="form-control form-control-sm" rows="2">{{ old('nota_personal') }}</textarea>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Nota para el Cliente:</label>
-                                <textarea name="nota_cliente" class="form-control form-control-sm" rows="2"></textarea>
+                                <textarea name="nota_cliente" class="form-control form-control-sm" rows="2">{{ old('nota_cliente') }}</textarea>
                             </div>
                         </div>
 
@@ -200,18 +217,22 @@
             $('.selectpicker').selectpicker();
 
             // Cliente/Proveedor: solo uno a la vez (misma lÃ³gica que conversiÃ³n)
-            $('#cliente_id').on('changed.bs.select', function() {
-                const val = $(this).val();
-                if (val) {
-                    $('#proveedor_id').val('').selectpicker('refresh');
+            function updateTipoUI() {
+                const tipo = $('input[name="tipo"]:checked').val() || 'venta';
+                const isVenta = tipo === 'venta';
+
+                $('#clienteWrapper').toggleClass('d-none', !isVenta);
+                $('#proveedorWrapper').toggleClass('d-none', isVenta);
+
+                if (isVenta) {
+                    $('#proveedor_id').selectpicker('val', '');
+                } else {
+                    $('#cliente_id').selectpicker('val', '');
                 }
-            });
-            $('#proveedor_id').on('changed.bs.select', function() {
-                const val = $(this).val();
-                if (val) {
-                    $('#cliente_id').val('').selectpicker('refresh');
-                }
-            });
+            }
+
+            $('input[name="tipo"]').on('change', updateTipoUI);
+            updateTipoUI();
 
             // --- Búsqueda de Productos ---
             $('#producto_search').on('input', function() {
