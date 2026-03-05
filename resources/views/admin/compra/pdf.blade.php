@@ -204,7 +204,7 @@
     </table>
 
     <div class="footer-note">
-        Usuario: {{ auth()->user()->name }} | Fecha Impresión: {{ now()->format('d/m/Y H:i:s') }}
+        Usuario: {{ auth()->user()->name ?? ($compra->user->name ?? 'Sistema') }} | Fecha Impresión: {{ now()->format('d/m/Y H:i:s') }}
         <br>Documento interno del sistema - No válido como factura fiscal
     </div>
 </body>

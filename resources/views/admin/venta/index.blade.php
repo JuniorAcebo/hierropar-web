@@ -824,7 +824,7 @@
             const pdfBtn = document.getElementById('pdfButton');
 
             const phoneDigits = normalizeWhatsappPhone(phoneInput ? phoneInput.value : '');
-            const facturaUrl = currentFacturaUrl || (pdfBtn ? pdfBtn.href : '');
+            const facturaUrl = currentFacturaUrl || '';
 
             if (!phoneDigits) {
                 Swal.fire({
@@ -839,7 +839,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Sin link',
-                    text: 'No se pudo obtener el link de la factura.'
+                    text: 'No se pudo obtener el link público de la factura. Cierra y vuelve a abrir el detalle para regenerarlo.'
                 });
                 return;
             }

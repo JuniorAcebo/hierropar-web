@@ -213,8 +213,8 @@
     </table>
 
     <div class="footer-note">
-        Usuario: {{ auth()->user()->name }} | Fecha Impreso: {{ now()->format('d/m/Y H:i:s') }}
-        <br>{{ $venta->comprobante->tipo_comprobante === 'Factura' ? 'Documento valido como credito fiscal' : 'Documento no valido como factura' }}
+        Usuario: {{ auth()->user()->name ?? ($venta->user->name ?? 'Sistema') }} | Fecha Impreso: {{ now()->format('d/m/Y H:i:s') }}
+        <br>{{ optional($venta->comprobante)->tipo_comprobante === 'Factura' ? 'Documento valido como credito fiscal' : 'Documento no valido como factura' }}
     </div>
 </body>
 </html>

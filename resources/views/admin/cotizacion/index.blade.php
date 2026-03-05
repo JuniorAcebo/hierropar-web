@@ -925,7 +925,7 @@
         whatsappButton.addEventListener('click', function(e) {
             e.preventDefault();
             const phoneDigits = normalizeWhatsappPhone(whatsappPhoneInput ? whatsappPhoneInput.value : '');
-            const facturaUrl = currentFacturaUrl || currentPdfUrl || '';
+            const facturaUrl = currentFacturaUrl || '';
 
             if (!phoneDigits) {
                 Swal.fire({
@@ -940,7 +940,7 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'Sin link',
-                    text: 'No se pudo obtener el link de la cotización.'
+                    text: 'No se pudo obtener el link público de la cotización. Vuelve a abrir el detalle para regenerarlo.'
                 });
                 return;
             }
